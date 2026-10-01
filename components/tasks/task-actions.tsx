@@ -8,6 +8,7 @@ import { addDays, type DateStr } from "@/lib/dates";
 import type { SubtaskView, TaskView } from "@/lib/types";
 import { CheckCircle } from "@/components/ui/controls";
 import { useToast } from "@/components/ui/toast";
+import { SnoozeButtons } from "@/components/ui/snooze-buttons";
 import { useTaskCompletion } from "./task-item";
 
 /** Botones rápidos en la ficha de una tarea (también a la que lleva una notificación). */
@@ -63,9 +64,11 @@ export function TaskQuickActions({ task, today }: { task: TaskView; today: DateS
       >
         <Sunrise size={20} /> Mañana
       </button>
+      {!done ? <SnoozeButtons path={`/api/tasks/${task.id}/snooze`} /> : null}
     </div>
   );
 }
+
 
 export function SubtaskList({ taskId, initial }: { taskId: string; initial: SubtaskView[] }) {
   const router = useRouter();

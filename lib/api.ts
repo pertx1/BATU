@@ -5,6 +5,9 @@ import { z } from "zod";
 import { getCurrentSession, type CurrentSession } from "@/lib/auth/session";
 import { ensureMigrated } from "@/lib/migrate";
 
+// Mensajes de error de zod en español (los que no tienen uno propio).
+z.config(z.locales.es());
+
 export class HttpError extends Error {
   constructor(
     public status: number,

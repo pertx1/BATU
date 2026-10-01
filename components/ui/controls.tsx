@@ -131,3 +131,36 @@ export function SectionTitle({ children, tone }: { children: React.ReactNode; to
     </h2>
   );
 }
+
+/** Interruptor tipo iOS. */
+export function Switch({
+  checked,
+  onChange,
+  label,
+  disabled,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={`relative h-[31px] w-[51px] shrink-0 rounded-full transition-colors duration-200 disabled:opacity-40 ${
+        checked ? "bg-success" : "bg-surface-2 ring-1 ring-line ring-inset"
+      }`}
+    >
+      <span
+        className={`absolute left-[2px] top-[2px] size-[27px] rounded-full bg-white shadow-md transition-transform duration-200 ${
+          checked ? "translate-x-5" : ""
+        }`}
+      />
+    </button>
+  );
+}

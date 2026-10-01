@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { parseBody, withUser } from "@/lib/api";
+import { getSettings } from "@/lib/data/settings";
+import { computeNextTimes } from "@/lib/notifications/timing";
 import { colorSchema, emojiSchema, hhmmSchema, timezoneSchema } from "@/lib/validation";
 
 const schema = z.object({
@@ -16,15 +18,13 @@ const schema = z.object({
 
 export const POST = withUser(async (req, { userId }) => {
   const body = await parseBody(req, schema);
-  const existing = await db.project.count({ where: { userId } });
+  const [existing, current] = await Promise.all([db.project.count({ where: { userId } }), getSettings(userId)]);
+  const schedule = { timezone: body.timezone, morningTime: body.morningTime, eveningTime: body.eveningTime };
+  const nextTimes = computeNextTimes({ ...current, ...schedule });
 
   await db.$transaction([
     db.user.update({ where: { id: userId }, data: { name: body.name, onboardedAt: new Date() } }),
-    db.settings.upsert({
-      where: { userId },
-      create: { userId, timezone: body.timezone, morningTime: body.morningTime, eveningTime: body.eveningTime },
-      update: { timezone: body.timezone, morningTime: body.morningTime, eveningTime: body.eveningTime },
-    }),
+    db.settings.update({ where: { userId }, data: { ...schedule, ...nextTimes } }),
     db.project.createMany({
       data: body.projects.map((p, i) => ({
         userId,

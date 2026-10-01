@@ -38,6 +38,27 @@ Cómo funciona la base de datos en el despliegue (`scripts/build.mjs` y `lib/mig
 - En runtime se usa el pooler con `pgbouncer=true` y `connection_limit=1`; las migraciones
   van por el modo sesión (puerto 5432) del mismo pooler.
 
+### Notificaciones push y cron
+
+1. Genera las claves: `npm run secrets`. Imprime `NEXT_PUBLIC_VAPID_PUBLIC_KEY`,
+   `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (pon tu email tras `mailto:`) y un `CRON_SECRET`.
+   Añádelas en Vercel → Settings → Environment Variables y vuelve a desplegar.
+   **No cambies las claves VAPID después**: todos los dispositivos tendrían que volver a activarlas.
+2. En [cron-job.org](https://cron-job.org) crea un cronjob:
+   - URL: `https://TU-APP.vercel.app/api/cron/tick?key=TU_CRON_SECRET`
+   - Ejecución: **cada minuto**. Método GET.
+   La respuesta es un JSON con lo enviado (`enviados`, `fallidos`, `esperandoNoMolestar`…).
+3. En el iPhone: abre la web en Safari → Compartir → **Añadir a pantalla de inicio**, abre
+   Antola desde el icono → **Menú → Ajustes → Activar notificaciones** → *Enviar notificación de prueba*.
+
+Cómo funciona el programador (`lib/notifications/tick.ts`):
+- Cada tarea, evento, hábito y resumen guarda su próximo disparo en UTC (`remindAt`,
+  `nextReminderAt`, `Settings.next*At`); cada llamada busca todo lo que vence ya, en bloque.
+- Cada aviso se reserva en `NotificationLog` con una clave única por usuario
+  (`task:<id>:<hora>`, `morning:<día>`…): nunca se envía dos veces aunque el cron se repita.
+- Lo que cae en "no molestar" se envía al terminar ese horario; lo que llega más de 2 h
+  tarde se descarta. Las suscripciones que responden 404/410 se borran.
+
 ### Scripts de instalación (npm 11+/12)
 
 Las versiones recientes de npm bloquean por defecto los scripts de instalación de las

@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CalendarDays, MapPin } from "lucide-react";
 import { requireOnboardedUser } from "@/lib/auth/session";
-import { capitalize, formatDateStr } from "@/lib/dates";
+import { capitalize, formatDateStr, todayStr } from "@/lib/dates";
 import { eventTimeLabel } from "@/lib/calendar-format";
 import { listProjects } from "@/lib/data/common";
 import { getEventView } from "@/lib/data/calendar";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { EventForm } from "@/components/calendar/event-form";
+import { SnoozeButtons } from "@/components/ui/snooze-buttons";
 
 export const metadata: Metadata = { title: "Evento" };
 
@@ -18,6 +19,9 @@ export default async function EventPage({ params }: PageProps<"/calendario/event
   if (!event) notFound();
   const back = `/calendario?d=${event.startDate}`;
   const multiDay = event.endDate !== event.startDate;
+  const today = todayStr(user.timezone);
+  // Posponer el aviso solo tiene sentido si el evento aún no ha terminado.
+  const upcoming = event.endDate >= today;
 
   return (
     <>
@@ -43,6 +47,11 @@ export default async function EventPage({ params }: PageProps<"/calendario/event
             </p>
           ) : null}
         </div>
+        {upcoming ? (
+          <div className="mb-6 grid grid-cols-2 gap-2">
+            <SnoozeButtons path={`/api/events/${event.id}/snooze`} />
+          </div>
+        ) : null}
         <EventForm key={JSON.stringify(event)} event={event} projects={projects} defaultDate={event.startDate} returnTo={back} />
       </PageBody>
     </>

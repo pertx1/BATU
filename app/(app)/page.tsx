@@ -10,6 +10,7 @@ import { OverdueList } from "@/components/today/overdue-list";
 import { ProgressCard } from "@/components/today/progress-card";
 import { SectionTitle } from "@/components/ui/controls";
 import { BadgeSync } from "@/components/today/badge-sync";
+import { NotifyBanner } from "@/components/today/notify-banner";
 import { EventRow } from "@/components/calendar/event-row";
 
 export default async function TodayPage() {
@@ -34,6 +35,7 @@ export default async function TodayPage() {
         }
       />
       <PageBody>
+        <NotifyBanner />
         <div className="space-y-3">
           <ProgressCard done={data.progress.done} total={data.progress.total} />
           {data.focus ? (

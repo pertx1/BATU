@@ -7,6 +7,8 @@ import { eventFieldsToData, eventToFields, updateEventSchema } from "@/lib/event
 
 type Params = { id: string };
 
+const sameInstant = (a: Date | null, b: Date | null) => (a?.getTime() ?? null) === (b?.getTime() ?? null);
+
 export const GET = withUser<Params>(async (_req, { userId, user }, { id }) => {
   const event = await getEventView(userId, id, user.timezone);
   if (!event) throw notFound();
@@ -24,7 +26,14 @@ export const PATCH = withUser<Params>(async (req, { userId, user }, { id }) => {
     const span = current.endDate.getTime() - current.startDate.getTime();
     merged.endDate = new Date(new Date(body.startDate + "T00:00:00Z").getTime() + span).toISOString().slice(0, 10);
   }
-  await db.event.update({ where: { id, userId }, data: eventFieldsToData(merged, user.timezone) });
+  const data = eventFieldsToData(merged, user.timezone);
+  // Mismo aviso que antes → se conserva el pendiente (p. ej. uno pospuesto).
+  const sameReminder =
+    data.reminderMinutesBefore === current.reminderMinutesBefore &&
+    sameInstant(data.startAt, current.startAt) &&
+    sameInstant(data.startDate, current.startDate);
+  if (sameReminder) data.remindAt = current.remindAt;
+  await db.event.update({ where: { id, userId }, data });
   return NextResponse.json({ ok: true });
 });
 

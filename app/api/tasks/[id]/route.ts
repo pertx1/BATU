@@ -7,6 +7,8 @@ import { fieldsToData, taskToFields, updateTaskSchema } from "@/lib/task-input";
 
 type Params = { id: string };
 
+const sameInstant = (a: Date | null, b: Date | null) => (a?.getTime() ?? null) === (b?.getTime() ?? null);
+
 export const GET = withUser<Params>(async (_req, { userId, user }, { id }) => {
   const task = await getTaskView(userId, id, user.timezone);
   if (!task) throw notFound();
@@ -21,7 +23,17 @@ export const PATCH = withUser<Params>(async (req, { userId, user }, { id }) => {
   if (body.goalId !== undefined) await assertOwnGoal(userId, body.goalId);
 
   const merged = { ...taskToFields(current, user.timezone), ...body };
-  await db.task.update({ where: { id, userId }, data: fieldsToData(merged, user.timezone) });
+  const data = fieldsToData(merged, user.timezone);
+  // Si no cambian fechas ni recordatorio, se conserva el aviso pendiente
+  // (por ejemplo, uno pospuesto o uno que ya se ha enviado).
+  const sameTiming =
+    data.reminderMode === current.reminderMode &&
+    data.reminderMinutesBefore === current.reminderMinutesBefore &&
+    sameInstant(data.reminderAt, current.reminderAt) &&
+    sameInstant(data.dueAt, current.dueAt) &&
+    sameInstant(data.dueDate, current.dueDate);
+  if (sameTiming) data.remindAt = current.remindAt;
+  await db.task.update({ where: { id, userId }, data });
   return NextResponse.json({ ok: true });
 });
 

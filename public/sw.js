@@ -2,8 +2,9 @@
  * - Caché solo de recursos estáticos (JS/CSS con hash, iconos, página offline).
  * - NUNCA se cachean páginas HTML ni respuestas de /api: contienen datos privados.
  * - Push: muestra la notificación y abre la URL al tocarla.
+ * - Si el navegador renueva la suscripción push, se vuelve a registrar sola.
  */
-const VERSION = "v1";
+const VERSION = "v2";
 const STATIC_CACHE = `antola-static-${VERSION}`;
 const PRECACHE = [
   "/offline.html",
@@ -129,5 +130,27 @@ self.addEventListener("notificationclick", (event) => {
       }
       return self.clients.openWindow(href);
     }),
+  );
+});
+
+// El navegador puede caducar y renovar la suscripción: la reenviamos al servidor
+// (la cookie de sesión viaja con la petición, igual que desde la app).
+self.addEventListener("pushsubscriptionchange", (event) => {
+  const old = event.oldSubscription;
+  const key = old && old.options ? old.options.applicationServerKey : null;
+  if (!key) return;
+  event.waitUntil(
+    self.registration.pushManager
+      .subscribe({ userVisibleOnly: true, applicationServerKey: key })
+      .then((sub) => {
+        const json = sub.toJSON();
+        return fetch("/api/push/subscribe", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ endpoint: json.endpoint, keys: json.keys }),
+        });
+      })
+      .catch(() => {}),
   );
 });

@@ -11,6 +11,7 @@
     "test": "vitest run",
     "db:migrate": "prisma migrate dev",
     "icons": "node scripts/generate-icons.mjs",
+    "secrets": "node scripts/generate-secrets.mjs",
     "postinstall": "prisma generate"
   },
   "dependencies": {
