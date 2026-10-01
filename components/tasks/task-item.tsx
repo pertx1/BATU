@@ -21,7 +21,6 @@ export function useTaskCompletion() {
   const toast = useToast();
 
   async function complete(id: string, onUndo?: () => void) {
-    navigator.vibrate?.(10);
     await api(`/api/tasks/${id}/complete`, { method: "POST" });
     toast.show({
       message: "¡Hecho! ✓",

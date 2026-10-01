@@ -7,6 +7,9 @@ import { api } from "@/lib/client/api";
 import { addDays, relativeDayLabel, type DateStr } from "@/lib/dates";
 import type { TaskView } from "@/lib/types";
 import { useToast } from "@/components/ui/toast";
+import { Antola } from "@/components/antola/antola";
+import type { AntolaLook } from "@/lib/gamification";
+import type { Expression } from "@/lib/antola/messages";
 
 const STEPS = ["Completado", "Pendiente", "Próxima semana", "Nota"] as const;
 
@@ -18,6 +21,7 @@ export function ReviewWizard({
   habits,
   previousFocus,
   existing,
+  antola = null,
 }: {
   weekStart: DateStr;
   today: DateStr;
@@ -26,6 +30,7 @@ export function ReviewWizard({
   habits: { hit: number; scheduled: number; rate: number | null };
   previousFocus: string | null;
   existing: { nextWeekFocus: string | null; notes: string | null } | null;
+  antola?: { look: AntolaLook; steps: { text: string; expression: Expression }[] } | null;
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -71,7 +76,6 @@ export function ReviewWizard({
     try {
       await api(`/api/tasks/${id}/complete`, { method: "POST" });
       setPending((p) => p.filter((t) => t.id !== id));
-      navigator.vibrate?.(10);
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
@@ -116,6 +120,13 @@ export function ReviewWizard({
           </li>
         ))}
       </ol>
+
+      {antola ? (
+        <div className="mb-4 flex items-end gap-2" aria-live="polite">
+          <Antola expression={antola.steps[step].expression} stage={antola.look.stage} accessories={antola.look.accessories} size={72} />
+          <p className="antola-bubble mb-3 flex-1 rounded-2xl bg-surface px-3.5 py-2.5 text-[15px] leading-snug">{antola.steps[step].text}</p>
+        </div>
+      ) : null}
 
       {step === 0 ? (
         <section className="space-y-4">

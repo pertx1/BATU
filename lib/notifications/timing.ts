@@ -1,7 +1,7 @@
 import { addDays, dayOfWeek, localDateStr, localMinutes, todayStr, zonedToUtc } from "@/lib/dates";
 
 /** Avisos periódicos de cada usuario (columnas next*At de Settings). */
-export const PERIODIC_KINDS = ["morning", "evening", "overdue", "weekly"] as const;
+export const PERIODIC_KINDS = ["morning", "evening", "overdue", "weekly", "streak", "missyou"] as const;
 export type PeriodicKind = (typeof PERIODIC_KINDS)[number];
 
 export const NEXT_FIELD = {
@@ -9,7 +9,13 @@ export const NEXT_FIELD = {
   evening: "nextEveningAt",
   overdue: "nextOverdueAt",
   weekly: "nextWeeklyAt",
+  streak: "nextStreakAt",
+  missyou: "nextMissYouAt",
 } as const satisfies Record<PeriodicKind, string>;
+
+/** Antola: racha en peligro a las 20:00 y "te echo de menos" a las 18:30 (hora local). */
+export const STREAK_RISK_TIME = 20 * 60;
+export const MISS_YOU_TIME = 18 * 60 + 30;
 
 /** Día de la revisión semanal (0 = domingo). */
 export const WEEKLY_REVIEW_DAY = 0;
@@ -61,16 +67,22 @@ export function nextPeriodicAt(kind: PeriodicKind, s: ScheduleSettings, now: Dat
       return nextLocalTimeAt(s.overdueTime, s.timezone, now);
     case "weekly":
       return nextLocalTimeAt(s.weeklyReviewTime, s.timezone, now, [WEEKLY_REVIEW_DAY]);
+    case "streak":
+      return nextLocalTimeAt(STREAK_RISK_TIME, s.timezone, now);
+    case "missyou":
+      return nextLocalTimeAt(MISS_YOU_TIME, s.timezone, now);
   }
 }
 
-/** Las cuatro columnas next*At recalculadas (al cambiar ajustes o zona horaria). */
+/** Las columnas next*At recalculadas (al cambiar ajustes o zona horaria). */
 export function computeNextTimes(s: ScheduleSettings, now: Date = new Date()) {
   return {
     nextMorningAt: nextPeriodicAt("morning", s, now),
     nextEveningAt: nextPeriodicAt("evening", s, now),
     nextOverdueAt: nextPeriodicAt("overdue", s, now),
     nextWeeklyAt: nextPeriodicAt("weekly", s, now),
+    nextStreakAt: nextPeriodicAt("streak", s, now),
+    nextMissYouAt: nextPeriodicAt("missyou", s, now),
   };
 }
 

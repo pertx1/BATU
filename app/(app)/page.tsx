@@ -3,6 +3,8 @@ import { ChevronRight, Menu, Plus, Target } from "lucide-react";
 import { requireOnboardedUser } from "@/lib/auth/session";
 import { capitalize, formatTz, greeting, todayStr } from "@/lib/dates";
 import { getTodayData } from "@/lib/data/today";
+import { getAntolaToday } from "@/lib/data/antola";
+import { AntolaToday } from "@/components/antola/antola-today";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { HabitRow } from "@/components/habits/habit-card";
 import { TaskList } from "@/components/tasks/task-item";
@@ -18,6 +20,7 @@ export default async function TodayPage() {
   const now = new Date();
   const today = todayStr(user.timezone, now);
   const data = await getTodayData(user.id, user.timezone, today);
+  const antola = await getAntolaToday(user, today, data, now);
   const hello = `${greeting(now, user.timezone)}${user.name ? `, ${user.name}` : ""}`;
   const date = capitalize(formatTz(now, user.timezone, "EEEE, d 'de' MMMM"));
   const pendingToday = data.tasks.filter((t) => !t.completedAt).length + data.overdue.length;
@@ -36,6 +39,7 @@ export default async function TodayPage() {
       />
       <PageBody>
         <NotifyBanner />
+        {antola ? <AntolaToday data={antola} overdueIds={data.overdue.map((t) => t.id)} today={today} /> : null}
         <div className="space-y-3">
           <ProgressCard done={data.progress.done} total={data.progress.total} />
           {data.focus ? (

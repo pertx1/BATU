@@ -61,7 +61,6 @@ export function useDictation(onText: (text: string) => void, onError: (e: Dictat
     try {
       r.start();
       setListening(true);
-      navigator.vibrate?.(10);
     } catch {
       rec.current = null;
       handlers.current.onError("failed");

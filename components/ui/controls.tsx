@@ -3,6 +3,8 @@
 import { Check } from "lucide-react";
 import { PROJECT_COLORS } from "@/lib/types";
 import { WEEKDAYS_SHORT, WEEK_ORDER } from "@/lib/dates";
+import { Antola } from "@/components/antola/antola";
+import { useGamification } from "@/components/antola/gamification-provider";
 
 export function Segmented<T extends string>({
   value,
@@ -116,9 +118,17 @@ export function WeekdayPicker({ value, onChange }: { value: number[]; onChange: 
 }
 
 export function EmptyState({ icon, title, text }: { icon: React.ReactNode; title: string; text?: string }) {
+  const { enabled, look } = useGamification();
   return (
     <div className="flex flex-col items-center px-6 py-12 text-center animate-fade-up">
-      <div className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-accent-soft text-accent">{icon}</div>
+      {enabled ? (
+        // Con la gamificación activa, Antola acompaña los estados vacíos.
+        <div className="mb-2">
+          <Antola expression="saludando" stage={look.stage} accessories={look.accessories} size={96} />
+        </div>
+      ) : (
+        <div className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-accent-soft text-accent">{icon}</div>
+      )}
       <p className="font-semibold">{title}</p>
       {text ? <p className="mt-1 text-sm text-muted">{text}</p> : null}
     </div>

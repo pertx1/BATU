@@ -3,12 +3,20 @@ import type { NotificationKind, Priority } from "@prisma/client";
 import { db } from "@/lib/db";
 import { dateStrToDb, dbToDateStr, DEFAULT_TZ, localDateStr, todayStr, type DateStr } from "@/lib/dates";
 import { rollAllRecurringTasks } from "@/lib/data/tasks";
-import { closeAllDays, ensureAllWeekChallenges } from "@/lib/gamification";
+import { closeAllDays, ensureAllWeekChallenges, todayState, visibleStreak } from "@/lib/gamification";
+import type { Tone } from "@/lib/antola/messages";
 import { isScheduledOn } from "@/lib/habits";
 import { nextHabitReminderAt } from "@/lib/schedule";
 import { vapidConfig } from "@/lib/push";
 import { deliver } from "@/lib/notifications/deliver";
 import {
+  antolaEvening,
+  antolaMissYou,
+  antolaMorning,
+  antolaOverdue,
+  antolaStreak,
+  antolaWeekly,
+  type AntolaVoice,
   eventMessage,
   eveningMessage,
   habitMessage,
@@ -45,6 +53,12 @@ const settingsSelect = {
   nextEveningAt: true,
   nextOverdueAt: true,
   nextWeeklyAt: true,
+  nextStreakAt: true,
+  nextMissYouAt: true,
+  notifyStreakRisk: true,
+  notifyMissYou: true,
+  gamificationEnabled: true,
+  antolaTone: true,
   user: { select: { name: true } },
 } as const;
 
@@ -69,6 +83,12 @@ type UserSettings = {
   nextEveningAt: Date | null;
   nextOverdueAt: Date | null;
   nextWeeklyAt: Date | null;
+  nextStreakAt: Date | null;
+  nextMissYouAt: Date | null;
+  notifyStreakRisk: boolean;
+  notifyMissYou: boolean;
+  gamificationEnabled: boolean;
+  antolaTone: Tone;
   user: { name: string | null };
 };
 
@@ -95,6 +115,12 @@ function defaultSettings(userId: string): UserSettings {
     nextEveningAt: null,
     nextOverdueAt: null,
     nextWeeklyAt: null,
+    nextStreakAt: null,
+    nextMissYouAt: null,
+    notifyStreakRisk: true,
+    notifyMissYou: true,
+    gamificationEnabled: true,
+    antolaTone: "LIVELY",
     user: { name: null },
   };
 }
@@ -104,13 +130,20 @@ const PERIODIC_TOGGLE = {
   evening: "notifyEvening",
   overdue: "notifyOverdue",
   weekly: "notifyWeekly",
+  streak: "notifyStreakRisk",
+  missyou: "notifyMissYou",
 } as const satisfies Record<PeriodicKind, keyof UserSettings>;
+
+/** Avisos que solo existen con la gamificación activa. */
+const ANTOLA_ONLY: PeriodicKind[] = ["streak", "missyou"];
 
 const PERIODIC_NOTIFICATION_KIND = {
   morning: "MORNING",
   evening: "EVENING",
   overdue: "OVERDUE",
   weekly: "WEEKLY",
+  streak: "STREAK_RISK",
+  missyou: "MISS_YOU",
 } as const satisfies Record<PeriodicKind, NotificationKind>;
 
 /** Aviso decidido pero aún sin texto (los resúmenes necesitan datos del día). */
@@ -129,6 +162,8 @@ type UserDay = {
   habitsToday: number;
   habitsPendingToday: number;
   eventsToday: number;
+  /** Con la gamificación activa: la voz de Antola y los datos de racha/inactividad. */
+  antola: (AntolaVoice & { streak: number; productive: boolean; missYou: boolean }) | null;
 };
 
 export type TickReport = {
@@ -195,10 +230,14 @@ export async function runTick(now: Date = new Date()): Promise<TickReport> {
           { nextEveningAt: { lte: now } },
           { nextOverdueAt: { lte: now } },
           { nextWeeklyAt: { lte: now } },
+          { nextStreakAt: { lte: now } },
+          { nextMissYouAt: { lte: now } },
           { nextMorningAt: null },
           { nextEveningAt: null },
           { nextOverdueAt: null },
           { nextWeeklyAt: null },
+          { nextStreakAt: null },
+          { nextMissYouAt: null },
         ],
       },
       select: settingsSelect,
@@ -228,6 +267,8 @@ export async function runTick(now: Date = new Date()): Promise<TickReport> {
     evening: [],
     overdue: [],
     weekly: [],
+    streak: [],
+    missyou: [],
   };
   const habitChecks: { habitId: string; date: DateStr }[] = [];
   let waiting = 0;
@@ -323,29 +364,36 @@ export async function runTick(now: Date = new Date()): Promise<TickReport> {
         continue;
       }
       if (!s[PERIODIC_TOGGLE[kind]]) continue;
+      if (ANTOLA_ONLY.includes(kind) && !s.gamificationEnabled) continue;
       candidates.push({
         userId: s.userId,
         kind: PERIODIC_NOTIFICATION_KIND[kind],
         key: `${kind}:${localDateStr(prev, s.timezone)}`,
         scheduledFor: prev,
         build: (day) => {
+          // Con la gamificación activa, los resúmenes los escribe Antola.
+          const voice = day.antola;
           switch (kind) {
             case "morning": {
               const top = [...day.todayTasks].sort((a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority])[0];
-              return morningMessage(
-                s.user.name,
-                { tasks: day.todayTasks.length, habits: day.habitsToday, events: day.eventsToday },
-                top?.title ?? null,
-              );
+              const counts = { tasks: day.todayTasks.length, habits: day.habitsToday, events: day.eventsToday };
+              return voice ? antolaMorning(voice, counts, top?.title ?? null) : morningMessage(s.user.name, counts, top?.title ?? null);
             }
             case "evening": {
               const pending = day.todayTasks.length + day.habitsPendingToday;
-              return pending > 0 ? eveningMessage(pending) : null;
+              if (pending <= 0) return null;
+              return voice ? antolaEvening(voice, pending) : eveningMessage(pending);
             }
             case "overdue":
-              return day.overdueCount > 0 ? overdueMessage(day.overdueCount) : null;
+              if (day.overdueCount <= 0) return null;
+              return voice ? antolaOverdue(voice, day.overdueCount) : overdueMessage(day.overdueCount);
             case "weekly":
-              return weeklyMessage();
+              return voice ? antolaWeekly(voice) : weeklyMessage();
+            case "streak":
+              // Solo si la racha es de 3 días o más y hoy aún no es productivo.
+              return voice && voice.streak >= 3 && !voice.productive ? antolaStreak(voice, voice.streak) : null;
+            case "missyou":
+              return voice?.missYou ? antolaMissYou(voice) : null;
           }
         },
       });
@@ -358,7 +406,7 @@ export async function runTick(now: Date = new Date()): Promise<TickReport> {
   const days = new Map<string, UserDay>(
     userIds.map((id) => [
       id,
-      { today: todayOf.get(id)!, todayTasks: [], overdueCount: 0, habitsToday: 0, habitsPendingToday: 0, eventsToday: 0 },
+      { today: todayOf.get(id)!, todayTasks: [], overdueCount: 0, habitsToday: 0, habitsPendingToday: 0, eventsToday: 0, antola: null },
     ]),
   );
 
@@ -423,6 +471,63 @@ export async function runTick(now: Date = new Date()): Promise<TickReport> {
     }
   }
 
+  // 4b. Antola: voz (tono, nombre, frases recientes) y datos de racha e inactividad.
+  const voiceUsers = [
+    ...new Set(
+      candidates
+        .filter((c) => ["MORNING", "EVENING", "OVERDUE", "WEEKLY", "STREAK_RISK", "MISS_YOU"].includes(c.kind))
+        .map((c) => c.userId)
+        .filter((id) => settingsOf(id).gamificationEnabled),
+    ),
+  ];
+  if (voiceUsers.length) {
+    const needStats = new Set(candidates.filter((c) => c.kind === "STREAK_RISK" || c.kind === "MISS_YOU").map((c) => c.userId));
+    const [recentLogs, stats, users] = await Promise.all([
+      db.antolaMessageLog.findMany({
+        where: { userId: { in: voiceUsers }, shownAt: { gte: new Date(now.getTime() - 14 * 86400000) } },
+        orderBy: { shownAt: "desc" },
+        select: { userId: true, messageId: true },
+        take: voiceUsers.length * 30,
+      }),
+      db.userStats.findMany({
+        where: { userId: { in: [...needStats] } },
+        select: { userId: true, currentStreak: true, lastMissYouAt: true },
+      }),
+      db.user.findMany({ where: { id: { in: [...needStats] } }, select: { id: true, lastActiveAt: true } }),
+    ]);
+    const recentBy = Map.groupBy(recentLogs, (l) => l.userId);
+    const statsBy = new Map(stats.map((s) => [s.userId, s]));
+    const activeBy = new Map(users.map((u) => [u.id, u.lastActiveAt]));
+    await Promise.all(
+      voiceUsers.map(async (id) => {
+        const s = settingsOf(id);
+        let streak = 0;
+        let productive = false;
+        let missYou = false;
+        const st = statsBy.get(id);
+        if (needStats.has(id) && st) {
+          const state = await todayState(db, id, s.timezone, now);
+          streak = visibleStreak(st, state);
+          productive = state.productive;
+          const lastActive = activeBy.get(id);
+          missYou =
+            !!lastActive &&
+            now.getTime() - lastActive.getTime() >= 2 * 86400000 &&
+            (!st.lastMissYouAt || now.getTime() - st.lastMissYouAt.getTime() >= 3 * 86400000);
+        }
+        days.get(id)!.antola = {
+          tone: s.antolaTone,
+          name: s.user.name,
+          recent: (recentBy.get(id) ?? []).slice(0, 10).map((l) => l.messageId),
+          used: [],
+          streak,
+          productive,
+          missYou,
+        };
+      }),
+    );
+  }
+
   // 5. Texto final de cada aviso; los que ya no hacen falta se descartan.
   const ready = candidates.flatMap((c) => {
     const day = days.get(c.userId)!;
@@ -442,6 +547,19 @@ export async function runTick(now: Date = new Date()): Promise<TickReport> {
         })
       : [];
   const payloadOf = new Map(ready.map((c) => [`${c.userId}|${c.key}`, c.payload]));
+
+  // Frases de Antola usadas (para no repetirlas) y "te echo de menos" enviado.
+  if (claimed.length) {
+    const claimedUsers = new Set(claimed.map((l) => l.userId));
+    const used = [...days.entries()].flatMap(([userId, d]) =>
+      claimedUsers.has(userId) ? (d.antola?.used ?? []).map((u) => ({ userId, messageId: u.id, situation: u.situation, text: u.text })) : [],
+    );
+    const missYouSent = claimed.filter((l) => l.key.startsWith("missyou:")).map((l) => l.userId);
+    await Promise.all([
+      used.length ? db.antolaMessageLog.createMany({ data: used }) : null,
+      missYouSent.length ? db.userStats.updateMany({ where: { userId: { in: missYouSent } }, data: { lastMissYouAt: now } }) : null,
+    ]);
+  }
 
   // 7. Enviar y, a la vez, mover los próximos disparos.
   const [delivery] = await Promise.all([

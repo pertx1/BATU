@@ -75,7 +75,6 @@ export function MilestoneList({ goalId, initial }: { goalId: string; initial: Mi
 
   async function toggle(m: MilestoneView) {
     setItems((l) => l.map((x) => (x.id === m.id ? { ...x, done: !x.done } : x)));
-    if (!m.done) navigator.vibrate?.(10);
     try {
       await api(`/api/milestones/${m.id}`, { method: "PATCH", body: { done: !m.done } });
       router.refresh();

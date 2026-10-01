@@ -30,7 +30,6 @@ export function Fab() {
     try {
       if (as === "idea") await api("/api/ideas", { body: { text: t } });
       else await api("/api/tasks", { body: { title: t } });
-      navigator.vibrate?.(10);
       toast.show({ message: as === "idea" ? "Guardada en Ideas 💡" : "Guardado en la Bandeja 📥" });
       setTitle("");
       setOpen(false);

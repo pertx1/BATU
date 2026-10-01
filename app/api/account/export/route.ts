@@ -39,6 +39,16 @@ export const GET = withUser(async (_req, { userId, user }) => {
       }),
     ]);
 
+  // Antola (gamificación): también es tuyo.
+  const [stats, xpEvents, streakDays, achievements, items, challenges] = await Promise.all([
+    db.userStats.findUnique({ where }),
+    db.xpEvent.findMany({ where, orderBy: { createdAt: "asc" }, select: { kind: true, refId: true, xp: true, crumbs: true, day: true, createdAt: true } }),
+    db.streakDay.findMany({ where, orderBy: { day: "asc" }, select: { day: true, productive: true, shieldUsed: true } }),
+    db.userAchievement.findMany({ where, select: { achievementId: true, unlockedAt: true } }),
+    db.userItem.findMany({ where, select: { itemId: true, equipped: true, purchasedAt: true } }),
+    db.weeklyChallenge.findMany({ where, orderBy: { weekStart: "asc" } }),
+  ]);
+
   // Sin el userId repetido en cada registro: todo es de esta cuenta.
   const strip = <T extends { userId?: string }>(rows: T[]) => rows.map(({ userId: _u, ...rest }) => rest);
 
@@ -64,6 +74,16 @@ export const GET = withUser(async (_req, { userId, user }) => {
     })),
     revisionesSemanales: strip(reviews).map((r) => ({ ...r, weekStart: day(r.weekStart) })),
     ideas: strip(ideas),
+    antola: {
+      estadisticas: stats
+        ? (({ userId: _u, lastProductiveDay, lastClosedDay, ...s }) => ({ ...s, lastProductiveDay: day(lastProductiveDay), lastClosedDay: day(lastClosedDay) }))(stats)
+        : null,
+      puntos: xpEvents.map((e) => ({ ...e, day: day(e.day) })),
+      dias: streakDays.map((d) => ({ ...d, day: day(d.day) })),
+      logros: achievements,
+      accesorios: items,
+      retos: strip(challenges).map((c) => ({ ...c, weekStart: day(c.weekStart) })),
+    },
     dispositivosConNotificaciones: devices,
     notificacionesRecientes: notifications,
   };

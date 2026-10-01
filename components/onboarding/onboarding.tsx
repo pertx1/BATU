@@ -7,6 +7,8 @@ import { api } from "@/lib/client/api";
 import { PROJECT_COLORS } from "@/lib/types";
 import { useStandalone } from "@/lib/client/standalone";
 import { InstallInstructions } from "./install-instructions";
+import { Antola } from "@/components/antola/antola";
+import type { Expression } from "@/lib/antola/messages";
 
 const SUGGESTED = [
   { name: "Personal", emoji: "🏠", color: PROJECT_COLORS[0] },
@@ -50,6 +52,15 @@ export function Onboarding({
   }, [timezone]);
 
   const steps = ["Nombre", "Zona horaria", "Horarios", "Proyectos", "Instalar"];
+  const first = name.trim().split(/\s+/)[0];
+  // Antola se presenta y acompaña cada paso.
+  const guide: { text: string; expression: Expression }[] = [
+    { text: "¡Hola! Soy Antola, tu hormiga ayudante. Te acompaño a organizar el día. ¿Cómo te llamas?", expression: "saludando" },
+    { text: `Encantada${first ? `, ${first}` : ""}. Dime tu zona horaria y sabré cuándo empieza tu día.`, expression: "feliz" },
+    { text: "Te aviso por la mañana con lo del día y por la noche si queda algo. ¿A qué hora te va bien?", expression: "pensativa" },
+    { text: "Las hormigas lo ordenamos todo por zonas. Elige tus proyectos (luego puedes cambiarlos).", expression: "orgullosa" },
+    { text: "¡Listo! Cada tarea y hábito te dará puntos y yo iré creciendo contigo.", expression: "celebrando" },
+  ];
 
   async function finish() {
     setSaving(true);
@@ -95,6 +106,11 @@ export function Onboarding({
           ))}
         </div>
         <span className="size-10" />
+      </div>
+
+      <div className="mb-6 flex items-end gap-2" aria-live="polite">
+        <Antola expression={guide[step].expression} size={78} />
+        <p className="antola-bubble mb-3 flex-1 rounded-2xl bg-surface px-3.5 py-2.5 text-[15px] leading-snug">{guide[step].text}</p>
       </div>
 
       <div key={step} className="flex-1 animate-fade-up">

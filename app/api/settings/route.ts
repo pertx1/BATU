@@ -22,6 +22,14 @@ const settingsSchema = z
     notifyEvening: z.boolean(),
     notifyOverdue: z.boolean(),
     notifyWeekly: z.boolean(),
+    // Antola
+    gamificationEnabled: z.boolean(),
+    antolaOnToday: z.boolean(),
+    soundsEnabled: z.boolean(),
+    antolaTone: z.enum(["LIVELY", "CALM"]),
+    notifyStreakRisk: z.boolean(),
+    notifyRewards: z.boolean(),
+    notifyMissYou: z.boolean(),
   })
   .partial()
   .strict();

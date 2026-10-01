@@ -10,13 +10,15 @@ export function getSettings(userId: string): Promise<Settings> {
   return db.settings.upsert({ where: { userId }, create: { userId }, update: {} });
 }
 
-/** Qué campo de horario afecta a cada aviso periódico. */
+/** Qué campo de horario afecta a cada aviso periódico (los de Antola tienen hora fija). */
 const TIME_FIELD = {
   morning: "morningTime",
   evening: "eveningTime",
   overdue: "overdueTime",
   weekly: "weeklyReviewTime",
-} as const satisfies Record<PeriodicKind, keyof Settings>;
+  streak: null,
+  missyou: null,
+} as const satisfies Record<PeriodicKind, keyof Settings | null>;
 
 /**
  * Próximos disparos que hay que recalcular tras un cambio de ajustes. Solo los
@@ -27,7 +29,7 @@ export function nextTimesAfterChange(before: Settings, after: Settings, now: Dat
   const out: Partial<Record<(typeof NEXT_FIELD)[PeriodicKind], Date>> = {};
   for (const kind of PERIODIC_KINDS) {
     const field = TIME_FIELD[kind];
-    if (tzChanged || before[field] !== after[field] || !before[NEXT_FIELD[kind]]) {
+    if (tzChanged || (field && before[field] !== after[field]) || !before[NEXT_FIELD[kind]]) {
       out[NEXT_FIELD[kind]] = nextPeriodicAt(kind, after, now);
     }
   }

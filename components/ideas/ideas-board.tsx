@@ -41,7 +41,6 @@ export function IdeasBoard({ initial }: { initial: IdeaItem[] }) {
       const { id } = await api<{ id: string }>("/api/ideas", { body: { text } });
       setIdeas((list) => [{ id, text, pinned: false, when: "Hoy" }, ...list]);
       setDraft("");
-      navigator.vibrate?.(10);
       router.refresh();
     } catch (err) {
       toast.error((err as Error).message);

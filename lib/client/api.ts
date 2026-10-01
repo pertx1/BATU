@@ -30,5 +30,9 @@ export async function api<T = unknown>(
   // Tras cualquier cambio, ninguna pantalla en caché puede quedarse vieja.
   const method = options.method ?? (options.body !== undefined ? "POST" : "GET");
   if (method !== "GET" && !path.startsWith("/api/auth/")) void purgeClientCache().catch(() => {});
+  // Lo ganado con Antola (XP, logros…) lo celebra GamificationProvider.
+  if (typeof window !== "undefined" && data && typeof data === "object" && "gamification" in data && data.gamification) {
+    window.dispatchEvent(new CustomEvent("antola:reward", { detail: data.gamification }));
+  }
   return data as T;
 }

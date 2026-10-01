@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Loader2, MapPin } from "lucide-react";
 import { api } from "@/lib/client/api";
-import { Switch } from "@/components/ui/controls";
+import { Segmented, Switch } from "@/components/ui/controls";
 import { useToast } from "@/components/ui/toast";
 
 export type SettingsValues = {
@@ -23,9 +23,16 @@ export type SettingsValues = {
   notifyEvening: boolean;
   notifyOverdue: boolean;
   notifyWeekly: boolean;
+  gamificationEnabled: boolean;
+  antolaOnToday: boolean;
+  soundsEnabled: boolean;
+  antolaTone: "LIVELY" | "CALM";
+  notifyStreakRisk: boolean;
+  notifyRewards: boolean;
+  notifyMissYou: boolean;
 };
 
-type Toggle = { key: keyof SettingsValues; title: string; text: string; time?: keyof SettingsValues };
+type Toggle = { key: keyof SettingsValues; title: string; text: string; time?: keyof SettingsValues; antola?: boolean };
 
 const TOGGLES: Toggle[] = [
   { key: "notifyTasks", title: "Tareas", text: "A la hora de su recordatorio" },
@@ -35,6 +42,9 @@ const TOGGLES: Toggle[] = [
   { key: "notifyEvening", title: "Repaso de la noche", text: "Solo si queda algo pendiente", time: "eveningTime" },
   { key: "notifyOverdue", title: "Tareas atrasadas", text: "Una vez al día, si tienes alguna", time: "overdueTime" },
   { key: "notifyWeekly", title: "Revisión semanal", text: "Los domingos", time: "weeklyReviewTime" },
+  { key: "notifyStreakRisk", title: "Racha en peligro", text: "A las 20:00, si llevas 3 días o más y hoy aún no", antola: true },
+  { key: "notifyRewards", title: "Logros y retos", text: "Cuando consigues uno", antola: true },
+  { key: "notifyMissYou", title: "Te echo de menos", text: "Si llevas 2 días sin entrar (como mucho cada 3 días)", antola: true },
 ];
 
 type SaveState = "idle" | "saving" | "saved";
@@ -68,7 +78,9 @@ export function SettingsForm({ initial, timezones }: { initial: SettingsValues; 
       saved.current = { ...saved.current, ...patch };
       setSaveState("saved");
       // La zona horaria cambia cómo se ve todo: recargamos los datos del servidor.
-      if (patch.timezone) router.refresh();
+      if (patch.timezone || patch.gamificationEnabled !== undefined || patch.antolaOnToday !== undefined || patch.soundsEnabled !== undefined) {
+        router.refresh();
+      }
     } catch (err) {
       toast.error((err as Error).message);
       setValues(saved.current);
@@ -120,6 +132,48 @@ export function SettingsForm({ initial, timezones }: { initial: SettingsValues; 
         ) : null}
       </p>
 
+      <section id="antola" className="scroll-mt-24">
+        <h2 className="mb-2 px-1 text-sm font-semibold uppercase tracking-wide text-muted">Antola</h2>
+        <ul className="card divide-y divide-line overflow-hidden">
+          <li className="flex items-center gap-3 px-4 py-3">
+            <div className="min-w-0 flex-1">
+              <p className="font-medium">Gamificación</p>
+              <p className="text-sm text-muted">Antola, puntos, rachas, logros y tienda. Si la apagas, se ocultan pero no se borran.</p>
+            </div>
+            <Switch checked={values.gamificationEnabled} onChange={(v) => update("gamificationEnabled", v)} label="Gamificación" />
+          </li>
+          {values.gamificationEnabled ? (
+            <>
+              <li className="flex items-center gap-3 px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium">Antola en «Hoy»</p>
+                  <p className="text-sm text-muted">Con su bocadillo y sus sugerencias</p>
+                </div>
+                <Switch checked={values.antolaOnToday} onChange={(v) => update("antolaOnToday", v)} label="Antola en Hoy" />
+              </li>
+              <li className="flex items-center gap-3 px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium">Sonidos</p>
+                  <p className="text-sm text-muted">Cortos, al completar y celebrar</p>
+                </div>
+                <Switch checked={values.soundsEnabled} onChange={(v) => update("soundsEnabled", v)} label="Sonidos" />
+              </li>
+              <li className="px-4 py-3">
+                <p className="mb-2 font-medium">Tono de Antola</p>
+                <Segmented
+                  value={values.antolaTone}
+                  onChange={(v) => update("antolaTone", v)}
+                  options={[
+                    { value: "LIVELY", label: "Animado" },
+                    { value: "CALM", label: "Tranquilo" },
+                  ]}
+                />
+              </li>
+            </>
+          ) : null}
+        </ul>
+      </section>
+
       <section>
         <h2 className="mb-2 px-1 text-sm font-semibold uppercase tracking-wide text-muted">Zona horaria</h2>
         <div className="card space-y-3 p-4">
@@ -149,7 +203,7 @@ export function SettingsForm({ initial, timezones }: { initial: SettingsValues; 
       <section>
         <h2 className="mb-2 px-1 text-sm font-semibold uppercase tracking-wide text-muted">Avisos</h2>
         <ul className="card divide-y divide-line overflow-hidden">
-          {TOGGLES.map((t) => {
+          {TOGGLES.filter((t) => !t.antola || values.gamificationEnabled).map((t) => {
             const on = values[t.key] as boolean;
             return (
               <li key={t.key} className="px-4 py-3">

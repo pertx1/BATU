@@ -234,3 +234,120 @@ button {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* ─── Antola ─────────────────────────────────────────────────────────────── */
+.antola {
+  overflow: visible;
+  -webkit-tap-highlight-color: transparent;
+}
+.antola-animated .antola-eyes {
+  animation: antola-blink 5.5s infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.antola-bounce {
+  animation: antola-bounce 2.8s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+.antola-hop {
+  animation: antola-hop 0.9s cubic-bezier(0.3, 0.7, 0.4, 1) infinite;
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+.antola-breathe {
+  animation: antola-breathe 4s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+.antola-animated .antola-wave {
+  animation: antola-wave 1.1s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: 0% 100%;
+}
+.antola-animated .antola-zzz {
+  animation: antola-zzz 3s ease-in-out infinite;
+}
+.antola-animated .antola-sparkles {
+  animation: antola-twinkle 1.2s ease-in-out infinite;
+}
+/* Reacción al tocarla */
+.antola-poke {
+  animation: antola-poke 0.6s cubic-bezier(0.3, 0.7, 0.4, 1.4);
+  transform-origin: 50% 100%;
+}
+@keyframes antola-blink {
+  0%, 93%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.1); }
+}
+@keyframes antola-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+@keyframes antola-hop {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  15% { transform: translateY(0) scale(1.04, 0.94); }
+  45% { transform: translateY(-14px) scale(0.97, 1.04); }
+  75% { transform: translateY(0) scale(1.03, 0.97); }
+}
+@keyframes antola-breathe {
+  0%, 100% { transform: scale(1, 1); }
+  50% { transform: scale(1.015, 0.985); }
+}
+@keyframes antola-wave {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-14deg); }
+}
+@keyframes antola-zzz {
+  0%, 100% { opacity: 0.4; transform: translateY(2px); }
+  50% { opacity: 1; transform: translateY(-3px); }
+}
+@keyframes antola-twinkle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+@keyframes antola-poke {
+  0% { transform: rotate(0) scale(1); }
+  30% { transform: rotate(-6deg) scale(1.06, 0.94); }
+  60% { transform: rotate(5deg) scale(0.97, 1.04); }
+  100% { transform: rotate(0) scale(1); }
+}
+
+/* «+10 XP» que sube y se desvanece */
+.xp-float {
+  animation: xp-float 1.1s ease-out forwards;
+}
+@keyframes xp-float {
+  0% { opacity: 0; transform: translate(-50%, 0) scale(0.8); }
+  15% { opacity: 1; transform: translate(-50%, -8px) scale(1.05); }
+  100% { opacity: 0; transform: translate(-50%, -56px) scale(1); }
+}
+
+/* Bocadillo de Antola */
+.antola-bubble {
+  position: relative;
+}
+.antola-bubble::before {
+  content: "";
+  position: absolute;
+  left: -7px;
+  top: 22px;
+  border-width: 7px 8px 7px 0;
+  border-style: solid;
+  border-color: transparent var(--surface) transparent transparent;
+}
+.antola-bubble.bg-bg::before {
+  border-right-color: var(--bg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .antola *,
+  .antola,
+  .antola-poke,
+  .xp-float {
+    animation: none !important;
+  }
+  .xp-float {
+    transform: translate(-50%, -24px);
+  }
+}

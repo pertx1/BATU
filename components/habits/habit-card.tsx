@@ -19,7 +19,6 @@ export function useHabitToggle(habitId: string, initialDone: boolean) {
   async function toggle(date?: DateStr) {
     const next = !done;
     setDone(next);
-    if (next) navigator.vibrate?.(10);
     try {
       await api(`/api/habits/${habitId}/toggle`, { body: { done: next, date } });
       router.refresh();

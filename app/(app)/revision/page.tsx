@@ -7,6 +7,8 @@ import { defaultReviewWeek, getReviewData, listReviews } from "@/lib/data/review
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { ReviewWizard } from "@/components/review/review-wizard";
 import { SectionTitle } from "@/components/ui/controls";
+import { antolaChrome, antolaSay, antolaSettings } from "@/lib/gamification";
+import { count } from "@/lib/antola/messages";
 
 export const metadata: Metadata = { title: "Revisión semanal" };
 
@@ -22,6 +24,33 @@ export default async function ReviewPage({ searchParams }: PageProps<"/revision"
     getReviewData(user.id, user.timezone, weekStart, today),
     listReviews(user.id),
   ]);
+  // Antola presenta la revisión y comenta la semana.
+  const settings = await antolaSettings(user.id);
+  let antola = null;
+  if (settings.gamificationEnabled) {
+    const vars = {
+      nombre: user.name,
+      completadas: count(data.completed.length, "tarea", "tareas"),
+      pendientes: count(data.pending.length, "tarea", "tareas"),
+    };
+    const [chrome, intro, summary, pending] = await Promise.all([
+      antolaChrome(user.id),
+      antolaSay(user.id, "revision_intro", vars, settings.antolaTone, { stable: true }),
+      antolaSay(user.id, data.completed.length >= 5 ? "revision_buena" : "revision_floja", vars, settings.antolaTone, { stable: true }),
+      data.pending.length ? antolaSay(user.id, "revision_pendientes", vars, settings.antolaTone, { stable: true }) : null,
+    ]);
+    antola = {
+      look: chrome.look,
+      steps: [
+        { text: `${intro.text} ${summary.text}`, expression: summary.expression },
+        pending
+          ? { text: pending.text, expression: pending.expression }
+          : { text: "Nada pendiente de esta semana. ¡Así da gusto!", expression: "orgullosa" as const },
+        { text: "¿En qué te quieres centrar la semana que viene? Una o dos cosas, no más.", expression: "pensativa" as const },
+        { text: data.existing ? "Puedes actualizar tu nota cuando quieras." : "Apunta lo que quieras recordar. Al guardar, +50 XP para ti.", expression: "feliz" as const },
+      ],
+    };
+  }
   const prev = addDays(weekStart, -7);
   const next = addDays(weekStart, 7);
 
@@ -63,6 +92,7 @@ export default async function ReviewPage({ searchParams }: PageProps<"/revision"
           habits={data.habits}
           previousFocus={data.previousFocus}
           existing={data.existing}
+          antola={antola}
         />
 
         {history.length ? (

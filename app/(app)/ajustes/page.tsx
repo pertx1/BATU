@@ -55,6 +55,13 @@ export default async function AjustesPage() {
             notifyEvening: s.notifyEvening,
             notifyOverdue: s.notifyOverdue,
             notifyWeekly: s.notifyWeekly,
+            gamificationEnabled: s.gamificationEnabled,
+            antolaOnToday: s.antolaOnToday,
+            soundsEnabled: s.soundsEnabled,
+            antolaTone: s.antolaTone,
+            notifyStreakRisk: s.notifyStreakRisk,
+            notifyRewards: s.notifyRewards,
+            notifyMissYou: s.notifyMissYou,
           }}
         />
       </PageBody>

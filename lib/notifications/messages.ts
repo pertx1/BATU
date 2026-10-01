@@ -1,3 +1,4 @@
+import { pickMessage, renderMessage, type MessageVars, type Situation, type Tone } from "@/lib/antola/messages";
 import { capitalize, localDateStr, localMinutes, minutesToHHMM, relativeDayLabel, type DateStr } from "@/lib/dates";
 
 /** Lo que recibe el service worker (public/sw.js). */
@@ -127,4 +128,64 @@ export function testMessage(): PushPayload {
     url: "/ajustes",
     tag: "test",
   };
+}
+
+// ─── Con la voz de Antola (si la gamificación está activa) ──────────────────
+
+
+export type AntolaVoice = { tone: Tone; name: string | null; recent: string[]; used: { situation: Situation; id: string; text: string }[] };
+
+/** Título = primera frase de Antola, con 🐜 delante; cuerpo = el resto (+ un detalle). */
+export function splitAntola(text: string, detail?: string | null): Pick<PushPayload, "title" | "body"> {
+  const m = text.match(/^(.+?[.!?…])\s+(.+)$/);
+  const first = m ? m[1] : text;
+  const rest = m ? m[2] : "";
+  return { title: `🐜 ${first}`, body: [rest, detail].filter(Boolean).join("\n") };
+}
+
+/** Frase de Antola para un aviso, sin repetir las últimas que vio el usuario. */
+function antolaLine(voice: AntolaVoice, situation: Situation, vars: MessageVars): string {
+  const msg = pickMessage(situation, voice.tone, voice.recent);
+  voice.recent.unshift(msg.id);
+  const text = renderMessage(msg.text, { nombre: voice.name, ...vars });
+  voice.used.push({ situation, id: msg.id, text });
+  return text;
+}
+
+export function antolaMorning(
+  voice: AntolaVoice,
+  counts: { tasks: number; habits: number; events: number },
+  topTask: string | null,
+): PushPayload {
+  const parts = [
+    counts.tasks ? plural(counts.tasks, "tarea", "tareas") : null,
+    counts.habits ? plural(counts.habits, "hábito", "hábitos") : null,
+    counts.events ? plural(counts.events, "evento", "eventos") : null,
+  ].filter((p): p is string => !!p);
+  const text = parts.length
+    ? antolaLine(voice, "noti_manana", { tareas: joinList(parts) })
+    : `Buenos días${voice.name ? `, ${voice.name}` : ""}. Hoy no tienes nada planificado.`;
+  return { ...splitAntola(text, topTask ? `Empieza por: ${topTask}` : null), url: "/", tag: "morning" };
+}
+
+export function antolaEvening(voice: AntolaVoice, pending: number): PushPayload {
+  const text = antolaLine(voice, "noti_noche", { pendientes: pending === 1 ? "queda 1 cosa" : `quedan ${pending} cosas` });
+  return { ...splitAntola(text), url: "/", tag: "evening" };
+}
+
+export function antolaOverdue(voice: AntolaVoice, count: number): PushPayload {
+  const text = antolaLine(voice, "noti_vencidas", { vencidas: plural(count, "tarea atrasada", "tareas atrasadas") });
+  return { ...splitAntola(text), url: "/", tag: "overdue" };
+}
+
+export function antolaWeekly(voice: AntolaVoice): PushPayload {
+  return { ...splitAntola(antolaLine(voice, "noti_semanal", {})), url: "/revision", tag: "weekly" };
+}
+
+export function antolaStreak(voice: AntolaVoice, streak: number): PushPayload {
+  return { ...splitAntola(antolaLine(voice, "noti_racha", { racha: streak })), url: "/", tag: "streak" };
+}
+
+export function antolaMissYou(voice: AntolaVoice): PushPayload {
+  return { ...splitAntola(antolaLine(voice, "noti_te_echo", {})), url: "/", tag: "missyou" };
 }
