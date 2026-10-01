@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { api } from "@/lib/client/api";
+import { useLeave } from "@/lib/client/navigation";
 import { minutesToHHMM, type DateStr } from "@/lib/dates";
 import { EVENT_REMINDER_OPTIONS, type EventView, type ProjectView } from "@/lib/types";
 import { useToast } from "@/components/ui/toast";
@@ -20,6 +21,7 @@ export function EventForm({
   returnTo: string;
 }) {
   const router = useRouter();
+  const leave = useLeave();
   const toast = useToast();
   const [title, setTitle] = useState(event?.title ?? "");
   const [allDay, setAllDay] = useState(event?.allDay ?? false);
@@ -66,8 +68,7 @@ export function EventForm({
       if (event) {
         await api(`/api/events/${event.id}`, { method: "PATCH", body: payload });
         toast.show({ message: "Evento guardado" });
-        router.refresh();
-        setSaving(false);
+        leave(returnTo);
       } else {
         await api("/api/events", { body: payload });
         toast.show({ message: "Evento creado" });

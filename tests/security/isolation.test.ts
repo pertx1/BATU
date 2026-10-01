@@ -111,6 +111,7 @@ beforeAll(async () => {
   const milestone = await A.ok("POST", `/api/goals/${milestoneGoal.id}/milestones`, { title: "Paso 2" });
   await A.ok("POST", `/api/goals/${goal.id}/focus`, { focus: true });
   const review = await A.ok("POST", "/api/reviews", { weekStart: "2026-09-14", nextWeekFocus: `Plan ${MARK}`, notes: `Nota ${MARK}` });
+  const idea = await A.ok("POST", "/api/ideas", { text: `Idea ${MARK}` });
   const pushEndpoint = `https://web.push.apple.com/aislamiento-${Date.now()}`;
   await A.ok("POST", "/api/push/subscribe", { endpoint: pushEndpoint, keys: { p256dh: "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM", auth: "tBHItJI5svbpez7KI4CCXg" } });
 
@@ -125,6 +126,7 @@ beforeAll(async () => {
     milestone: milestone.id,
     progressLog: log.id,
     review: review.id,
+    idea: idea.id,
     // B no es admin: el endpoint de admin debe dar 404 con cualquier id.
     userId: "cuser00000000000000000000",
     pushEndpoint,

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, X } from "lucide-react";
 import { api } from "@/lib/client/api";
+import { useLeave } from "@/lib/client/navigation";
 import { addDays, minutesToHHMM, type DateStr } from "@/lib/dates";
 import { RECURRENCE_LABEL } from "@/lib/recurrence";
 import type { Priority, ProjectView, Recurrence, ReminderMode, TaskView } from "@/lib/types";
@@ -39,6 +40,7 @@ export function TaskForm({
   returnTo: string;
 }) {
   const router = useRouter();
+  const leave = useLeave();
   const toast = useToast();
   const [saving, setSaving] = useState(false);
 
@@ -101,8 +103,7 @@ export function TaskForm({
       if (task) {
         await api(`/api/tasks/${task.id}`, { method: "PATCH", body: payload });
         toast.show({ message: "Cambios guardados" });
-        router.refresh();
-        setSaving(false);
+        leave(returnTo);
       } else {
         await api("/api/tasks", { method: "POST", body: payload });
         toast.show({ message: dueDate || projectId ? "Tarea creada" : "Guardada en la Bandeja" });

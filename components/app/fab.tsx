@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Inbox, Plus, SlidersHorizontal } from "lucide-react";
+import { Inbox, Lightbulb, Plus, SlidersHorizontal } from "lucide-react";
 import { api } from "@/lib/client/api";
 import { Sheet } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/toast";
@@ -20,15 +20,16 @@ export function Fab() {
   // En formularios de creación el "+" sobra.
   if (pathname.endsWith("/nueva") || pathname.endsWith("/nuevo")) return null;
 
-  async function save(e: React.FormEvent) {
-    e.preventDefault();
+  async function save(e: React.FormEvent | null, as: "task" | "idea" = "task") {
+    e?.preventDefault();
     const t = title.trim();
     if (!t) return;
     setSaving(true);
     try {
-      await api("/api/tasks", { body: { title: t } });
+      if (as === "idea") await api("/api/ideas", { body: { text: t } });
+      else await api("/api/tasks", { body: { title: t } });
       navigator.vibrate?.(10);
-      toast.show({ message: "Guardado en la Bandeja 📥" });
+      toast.show({ message: as === "idea" ? "Guardada en Ideas 💡" : "Guardado en la Bandeja 📥" });
       setTitle("");
       setOpen(false);
       router.refresh();
@@ -71,8 +72,17 @@ export function Fab() {
             >
               <SlidersHorizontal size={20} />
             </Link>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              disabled={saving || !title.trim()}
+              onClick={() => save(null, "idea")}
+              aria-label="Guardar como idea"
+            >
+              <Lightbulb size={20} />
+            </button>
             <button type="submit" className="btn btn-primary flex-1" disabled={saving || !title.trim()}>
-              <Inbox size={20} /> {saving ? "Guardando…" : "Guardar en la Bandeja"}
+              <Inbox size={20} /> {saving ? "Guardando…" : "A la Bandeja"}
             </button>
           </div>
         </form>

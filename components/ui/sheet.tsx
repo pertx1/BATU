@@ -33,7 +33,7 @@ export function Sheet({
       <div
         role="dialog"
         aria-modal="true"
-        className="pb-safe max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-surface animate-sheet-up"
+        className="sheet pb-safe max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-surface animate-sheet-up"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sticky top-0 z-10 bg-surface px-5 pb-2 pt-3">

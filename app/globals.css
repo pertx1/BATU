@@ -126,7 +126,10 @@ button {
   .input {
     @apply w-full rounded-xl border border-transparent bg-surface px-4 py-3 text-fg outline-none transition placeholder:text-muted focus:border-accent/60 focus:ring-4 focus:ring-accent/15;
   }
-  .card .input {
+  /* Dentro de una sección o una hoja (fondo blanco/gris oscuro) el campo usa
+     el fondo de la app para que se vea dónde escribir. */
+  .card .input,
+  .sheet .input {
     @apply bg-bg;
   }
   .label {

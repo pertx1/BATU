@@ -2,6 +2,7 @@ import { requireOnboardedUser } from "@/lib/auth/session";
 import { TabBar } from "@/components/app/tab-bar";
 import { Fab } from "@/components/app/fab";
 import { ToastProvider } from "@/components/ui/toast";
+import { NavigationTracker } from "@/lib/client/navigation";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   await requireOnboardedUser();
@@ -9,6 +10,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <ToastProvider>
       <div className="min-h-dvh" style={{ paddingBottom: "calc(max(env(safe-area-inset-bottom), 12px) + 62px + 90px)" }}>
         {children}
+        <NavigationTracker />
         <Fab />
         <TabBar />
       </div>

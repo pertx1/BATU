@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, X } from "lucide-react";
 import { api } from "@/lib/client/api";
+import { useLeave } from "@/lib/client/navigation";
 import type { GoalType, GoalView, ProjectView } from "@/lib/types";
 import { Segmented } from "@/components/ui/controls";
 import { useToast } from "@/components/ui/toast";
@@ -29,6 +30,7 @@ function numberToInput(n: number | null): string {
 
 export function GoalForm({ goal, projects }: { goal?: GoalView; projects: ProjectView[] }) {
   const router = useRouter();
+  const leave = useLeave();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [title, setTitle] = useState(goal?.title ?? "");
@@ -76,13 +78,14 @@ export function GoalForm({ goal, projects }: { goal?: GoalView; projects: Projec
       if (goal) {
         await api(`/api/goals/${goal.id}`, { method: "PATCH", body });
         toast.show({ message: "Objetivo guardado" });
-        router.push(`/objetivos/${goal.id}`);
+        // Vuelve a la ficha del objetivo (sin dejar la edición en el historial).
+        leave(`/objetivos/${goal.id}`);
       } else {
         const created = await api<{ id: string }>("/api/goals", { body });
         toast.show({ message: "Objetivo creado 🎯" });
         router.push(`/objetivos/${created.id}`);
+        router.refresh();
       }
-      router.refresh();
     } catch (err) {
       toast.error((err as Error).message);
       setBusy(false);

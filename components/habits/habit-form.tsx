@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/client/api";
+import { useLeave } from "@/lib/client/navigation";
 import { minutesToHHMM } from "@/lib/dates";
 import { PROJECT_COLORS, type HabitView } from "@/lib/types";
 import { ColorPicker, Segmented, WeekdayPicker } from "@/components/ui/controls";
@@ -12,6 +13,7 @@ const SUGGESTIONS = ["💧 Beber agua", "🏃 Hacer ejercicio", "📚 Leer 20 mi
 
 export function HabitForm({ habit }: { habit?: HabitView }) {
   const router = useRouter();
+  const leave = useLeave();
   const toast = useToast();
   const [name, setName] = useState(habit?.name ?? "");
   const [emoji, setEmoji] = useState(habit?.emoji ?? "");
@@ -39,8 +41,7 @@ export function HabitForm({ habit }: { habit?: HabitView }) {
       if (habit) {
         await api(`/api/habits/${habit.id}`, { method: "PATCH", body });
         toast.show({ message: "Hábito guardado" });
-        router.refresh();
-        setBusy(false);
+        leave("/habitos");
       } else {
         await api("/api/habits", { body });
         toast.show({ message: "Hábito creado. ¡A por la racha! 🔥" });

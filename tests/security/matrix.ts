@@ -17,6 +17,7 @@ export type VictimIds = {
   milestone: string;
   progressLog: string;
   review: string;
+  idea: string;
   userId: string;
   pushEndpoint: string;
 };
@@ -64,6 +65,9 @@ export const FOREIGN_ID_ATTACKS: Attack[] = [
   { method: "DELETE", route: "/api/milestones/[id]", path: (v) => `/api/milestones/${v.milestone}`, expect: NOT_FOUND },
   { method: "DELETE", route: "/api/goal-progress/[id]", path: (v) => `/api/goal-progress/${v.progressLog}`, expect: NOT_FOUND },
   { method: "DELETE", route: "/api/reviews/[id]", path: (v) => `/api/reviews/${v.review}`, expect: NOT_FOUND },
+  { method: "PATCH", route: "/api/ideas/[id]", path: (v) => `/api/ideas/${v.idea}`, body: () => ({ pinned: true }), expect: NOT_FOUND },
+  { method: "DELETE", route: "/api/ideas/[id]", path: (v) => `/api/ideas/${v.idea}`, expect: NOT_FOUND },
+  { method: "POST", route: "/api/ideas/[id]/task", path: (v) => `/api/ideas/${v.idea}/task`, expect: NOT_FOUND },
   // B no es admin: el panel no existe para él.
   { method: "POST", route: "/api/admin/users/[id]", path: (v) => `/api/admin/users/${v.userId}`, body: () => ({ disabled: true }), expect: NOT_FOUND },
 ];
@@ -94,6 +98,7 @@ export const BODY_ATTACKS: Attack[] = [
 export const SELF_ENDPOINTS: Pick<Attack, "method" | "route">[] = [
   { method: "POST", route: "/api/projects" },
   { method: "POST", route: "/api/habits" },
+  { method: "POST", route: "/api/ideas" },
   { method: "POST", route: "/api/onboarding" },
   { method: "POST", route: "/api/push/subscribe" },
   { method: "POST", route: "/api/push/test" },

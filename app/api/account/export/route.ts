@@ -11,7 +11,7 @@ const day = (d: Date | null) => (d ? dbToDateStr(d) : null);
  */
 export const GET = withUser(async (_req, { userId, user }) => {
   const where = { userId };
-  const [account, settings, projects, tasks, habits, habitLogs, events, goals, reviews, devices, notifications] =
+  const [account, settings, projects, tasks, habits, habitLogs, events, goals, reviews, ideas, devices, notifications] =
     await Promise.all([
       db.user.findUniqueOrThrow({
         where: { id: userId },
@@ -29,6 +29,7 @@ export const GET = withUser(async (_req, { userId, user }) => {
         orderBy: { createdAt: "asc" },
       }),
       db.weeklyReview.findMany({ where, orderBy: { weekStart: "asc" } }),
+      db.idea.findMany({ where, orderBy: { createdAt: "asc" } }),
       db.pushSubscription.findMany({ where, select: { userAgent: true, createdAt: true, lastSuccessAt: true } }),
       db.notificationLog.findMany({
         where,
@@ -62,6 +63,7 @@ export const GET = withUser(async (_req, { userId, user }) => {
       progressLogs: strip(g.progressLogs).map((l) => ({ ...l, date: day(l.date) })),
     })),
     revisionesSemanales: strip(reviews).map((r) => ({ ...r, weekStart: day(r.weekStart) })),
+    ideas: strip(ideas),
     dispositivosConNotificaciones: devices,
     notificacionesRecientes: notifications,
   };

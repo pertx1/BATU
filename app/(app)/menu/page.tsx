@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BarChart3, ChevronRight, ClipboardCheck, Folder, Settings, ShieldCheck, UserRound } from "lucide-react";
+import { BarChart3, ChevronRight, ClipboardCheck, Folder, Lightbulb, Settings, ShieldCheck, UserRound } from "lucide-react";
 import { requireUser } from "@/lib/auth/session";
 import { isAdminEmail } from "@/lib/env";
 import { PageBody, PageHeader } from "@/components/app/page-header";
@@ -8,6 +8,7 @@ import { PageBody, PageHeader } from "@/components/app/page-header";
 export const metadata: Metadata = { title: "Menú" };
 
 const ITEMS = [
+  { href: "/ideas", label: "Ideas", icon: Lightbulb },
   { href: "/proyectos", label: "Proyectos", icon: Folder },
   { href: "/estadisticas", label: "Estadísticas", icon: BarChart3 },
   { href: "/revision", label: "Revisión semanal", icon: ClipboardCheck },
