@@ -4,6 +4,7 @@ import { minutesToHHMM } from "@/lib/dates";
 import { getSettings } from "@/lib/data/settings";
 import { vapidPublicKey } from "@/lib/push";
 import { PageBody, PageHeader } from "@/components/app/page-header";
+import { AppearancePanel } from "@/components/settings/appearance-panel";
 import { NotificationsPanel } from "@/components/settings/notifications-panel";
 import { SettingsForm } from "@/components/settings/settings-form";
 
@@ -31,6 +32,10 @@ export default async function AjustesPage() {
           </h2>
           {/* La clave pública se lee en tiempo de ejecución: no hace falta recompilar al añadirla. */}
           <NotificationsPanel publicKey={vapidPublicKey()} />
+        </section>
+        <section id="apariencia" className="mb-7 scroll-mt-24">
+          <h2 className="mb-2 px-1 text-sm font-semibold uppercase tracking-wide text-muted">Apariencia</h2>
+          <AppearancePanel />
         </section>
         <SettingsForm
           timezones={timezones()}

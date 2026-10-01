@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ServiceWorkerRegistrar } from "@/components/service-worker-registrar";
 import { OfflineBanner } from "@/components/offline-banner";
+import { ThemeSync } from "@/components/theme-sync";
+import { THEME_COLORS, themeScript } from "@/lib/theme";
 
 export const metadata: Metadata = {
   title: { default: "Antola", template: "%s · Antola" },
@@ -28,15 +30,21 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f2f2f7" },
-    { media: "(prefers-color-scheme: dark)", color: "#000000" },
+    { media: "(prefers-color-scheme: light)", color: THEME_COLORS.light },
+    { media: "(prefers-color-scheme: dark)", color: THEME_COLORS.dark },
   ],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="es" className="h-full antialiased">
+    // suppressHydrationWarning: el script de abajo pone data-theme antes de hidratar.
+    <html lang="es" className="h-full antialiased" suppressHydrationWarning>
+      <head>
+        {/* Tema elegido en Ajustes, aplicado antes de pintar (sin destello). */}
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className="min-h-full">
+        <ThemeSync />
         <OfflineBanner />
         {children}
         <ServiceWorkerRegistrar />

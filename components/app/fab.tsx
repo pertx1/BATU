@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Inbox, Lightbulb, Plus, SlidersHorizontal } from "lucide-react";
 import { api } from "@/lib/client/api";
+import { MicButton } from "@/components/ui/mic-button";
 import { Sheet } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/toast";
 
@@ -16,6 +17,7 @@ export function Fab() {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [saving, setSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // En formularios de creación el "+" sobra.
   if (pathname.endsWith("/nueva") || pathname.endsWith("/nuevo")) return null;
@@ -53,16 +55,20 @@ export function Fab() {
       </button>
       <Sheet open={open} onClose={() => setOpen(false)}>
         <form onSubmit={save} className="space-y-3">
-          <input
-            className="input text-lg"
-            placeholder="¿Qué tienes en mente?"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            autoFocus
-            maxLength={300}
-            enterKeyHint="done"
-            aria-label="Nueva tarea"
-          />
+          <div className="flex gap-2">
+            <input
+              ref={inputRef}
+              className="input text-lg"
+              placeholder="¿Qué tienes en mente?"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              autoFocus
+              maxLength={300}
+              enterKeyHint="done"
+              aria-label="Nueva tarea"
+            />
+            <MicButton value={title} onChange={(t) => setTitle(t.slice(0, 300))} field={inputRef} />
+          </div>
           <div className="flex gap-2">
             <Link
               href={`/tareas/nueva?title=${encodeURIComponent(title)}&back=${encodeURIComponent(pathname)}`}

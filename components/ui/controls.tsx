@@ -20,6 +20,7 @@ export function Segmented<T extends string>({
           key={o.value}
           type="button"
           onClick={() => onChange(o.value)}
+          aria-pressed={value === o.value}
           className={`min-h-10 flex-1 rounded-full px-2 text-[15px] font-semibold transition ${
             value === o.value ? "bg-segment text-fg shadow-[0_3px_8px_rgb(0_0_0/0.12)]" : "text-muted"
           }`}

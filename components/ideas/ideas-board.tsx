@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckSquare, Lightbulb, Pin, PinOff, Search, Trash2 } from "lucide-react";
 import { api } from "@/lib/client/api";
 import { EmptyState, SectionTitle } from "@/components/ui/controls";
+import { MicButton } from "@/components/ui/mic-button";
 import { Sheet } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/toast";
 
@@ -18,6 +19,7 @@ export function IdeasBoard({ initial }: { initial: IdeaItem[] }) {
   const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState<IdeaItem | null>(null);
+  const draftRef = useRef<HTMLTextAreaElement>(null);
 
   // Cuando llegan datos nuevos del servidor (p. ej. una idea guardada desde el
   // botón «+»), se usan en lugar de la copia local.
@@ -68,8 +70,9 @@ export function IdeasBoard({ initial }: { initial: IdeaItem[] }) {
     <>
       <form onSubmit={add} className="card p-3">
         <textarea
+          ref={draftRef}
           className="input min-h-[88px] resize-none"
-          placeholder="Apunta una idea…"
+          placeholder="Apunta o dicta una idea…"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
@@ -78,7 +81,8 @@ export function IdeasBoard({ initial }: { initial: IdeaItem[] }) {
           maxLength={5000}
           aria-label="Nueva idea"
         />
-        <div className="mt-2 flex justify-end">
+        <div className="mt-2 flex justify-end gap-2">
+          <MicButton value={draft} onChange={setDraft} field={draftRef} className="min-h-11" />
           <button type="submit" className="btn btn-primary min-h-11 px-5" disabled={saving || !draft.trim()}>
             <Lightbulb size={19} /> {saving ? "Guardando…" : "Guardar idea"}
           </button>
@@ -148,6 +152,7 @@ function IdeaEditor({ idea, onChange }: { idea: IdeaItem; onChange: (next: IdeaI
   const toast = useToast();
   const [text, setText] = useState(idea.text);
   const [busy, setBusy] = useState(false);
+  const textRef = useRef<HTMLTextAreaElement>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const changed = text.trim() !== idea.text && text.trim().length > 0;
 
@@ -165,13 +170,17 @@ function IdeaEditor({ idea, onChange }: { idea: IdeaItem; onChange: (next: IdeaI
 
   return (
     <div className="space-y-3">
-      <textarea
-        className="input min-h-36 resize-y"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        maxLength={5000}
-        aria-label="Texto de la idea"
-      />
+      <div className="relative">
+        <textarea
+          ref={textRef}
+          className="input min-h-36 resize-y pb-16"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          maxLength={5000}
+          aria-label="Texto de la idea"
+        />
+        <MicButton value={text} onChange={setText} field={textRef} className="absolute bottom-3 right-2 min-h-11" />
+      </div>
       {changed ? (
         <button
           type="button"

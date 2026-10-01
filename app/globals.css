@@ -28,8 +28,10 @@
   color-scheme: light;
 }
 
+/* Modo oscuro: el del sistema, salvo que en Ajustes se elija claro u oscuro
+   (lib/theme.ts pone data-theme en <html> antes de pintar). */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #000000;
     --surface: #1c1c1e;
     --surface-2: #2c2c2e;
@@ -51,6 +53,29 @@
     --glass-border: rgb(255 255 255 / 0.12);
     color-scheme: dark;
   }
+}
+
+:root[data-theme="dark"] {
+  --bg: #000000;
+  --surface: #1c1c1e;
+  --surface-2: #2c2c2e;
+  --segment: #636366;
+  --fg: #ffffff;
+  --muted: #98989f;
+  --line: #38383a;
+  --accent: #7d7aff; /* systemIndigo alto contraste: 4.9:1 */
+  --accent-fg: #ffffff;
+  --accent-soft: #24234a;
+  --danger: #ff453a;
+  --danger-soft: #3b1513;
+  --success: #30d158;
+  --success-fg: #000000;
+  --success-soft: #0f2e18;
+  --warning: #ff9f0a;
+  --switch: #30d158;
+  --glass: rgb(28 28 30 / 0.82);
+  --glass-border: rgb(255 255 255 / 0.12);
+  color-scheme: dark;
 }
 
 @theme inline {
