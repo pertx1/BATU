@@ -57,3 +57,28 @@ export function nextOccurrence(
   }
   return next;
 }
+
+/**
+ * Ocurrencia que toca ahora de una tarea repetitiva que no se hizo a tiempo:
+ * la última fecha de la serie que no pasa de hoy. Con «cada día» es hoy; con
+ * «cada semana» el último día de la serie (que puede seguir siendo anterior a
+ * hoy). Devuelve null si la tarea ya está en su ocurrencia actual.
+ */
+export function currentOccurrence(
+  dueDate: DateStr,
+  today: DateStr,
+  recurrence: Recurrence,
+  days: number[],
+): DateStr | null {
+  if (recurrence === "NONE" || dueDate >= today) return null;
+  const monthDay = Number(dueDate.slice(8, 10));
+  let current: DateStr = dueDate;
+  let next = stepRecurrence(current, recurrence, days, monthDay);
+  let guard = 0;
+  while (next && next <= today && guard < 1000) {
+    current = next;
+    next = stepRecurrence(current, recurrence, days, monthDay);
+    guard++;
+  }
+  return current === dueDate ? null : current;
+}

@@ -4,7 +4,7 @@ import { dateStrToDb, type DateStr } from "@/lib/dates";
 import { toEventView } from "@/lib/data/calendar";
 import { goalInclude, toGoalView } from "@/lib/data/goals";
 import { listHabitViews } from "@/lib/data/habits";
-import { taskInclude, taskOrder, toTaskView } from "@/lib/data/tasks";
+import { rollRecurringTasks, taskInclude, taskOrder, toTaskView } from "@/lib/data/tasks";
 
 export type FocusGoal = {
   id: string;
@@ -15,6 +15,8 @@ export type FocusGoal = {
 
 export async function getTodayData(userId: string, timeZone: string, today: DateStr) {
   const todayDb = dateStrToDb(today);
+  // Las repetitivas sin hacer pasan a hoy antes de leer.
+  await rollRecurringTasks(userId, timeZone, today);
 
   const [overdueRaw, todayRaw, habitData, eventsRaw, focusRaw] = await Promise.all([
     db.task.findMany({

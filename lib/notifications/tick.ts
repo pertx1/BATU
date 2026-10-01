@@ -2,6 +2,7 @@ import "server-only";
 import type { NotificationKind, Priority } from "@prisma/client";
 import { db } from "@/lib/db";
 import { dateStrToDb, dbToDateStr, DEFAULT_TZ, localDateStr, todayStr, type DateStr } from "@/lib/dates";
+import { rollAllRecurringTasks } from "@/lib/data/tasks";
 import { isScheduledOn } from "@/lib/habits";
 import { nextHabitReminderAt } from "@/lib/schedule";
 import { vapidConfig } from "@/lib/push";
@@ -469,7 +470,11 @@ export async function runTick(now: Date = new Date()): Promise<TickReport> {
   };
 }
 
-/** Limpieza horaria: registros viejos, sesiones caducadas y enlaces de recuperación usados. */
+/**
+ * Limpieza horaria: registros viejos, sesiones caducadas y enlaces de
+ * recuperación usados. Además pasa al día las tareas repetitivas sin hacer
+ * (y con ellas su aviso de hoy).
+ */
 async function housekeeping(now: Date) {
   const ago = (days: number) => new Date(now.getTime() - days * 86400000);
   await Promise.allSettled([
@@ -477,6 +482,7 @@ async function housekeeping(now: Date) {
     db.loginAttempt.deleteMany({ where: { createdAt: { lt: ago(1) } } }),
     db.session.deleteMany({ where: { expiresAt: { lt: now } } }),
     db.passwordResetToken.deleteMany({ where: { OR: [{ expiresAt: { lt: now } }, { usedAt: { not: null } }] } }),
+    rollAllRecurringTasks(now),
   ]);
 }
 

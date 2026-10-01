@@ -5,11 +5,12 @@ import {
   addDays,
   dateStrToDb,
   dbToDateStr,
+  DEFAULT_TZ,
   type DateStr,
   localDateStr,
   localMinutes,
 } from "@/lib/dates";
-import { nextOccurrence } from "@/lib/recurrence";
+import { currentOccurrence, nextOccurrence } from "@/lib/recurrence";
 import { computeTaskTiming } from "@/lib/schedule";
 import type { TaskView } from "@/lib/types";
 
@@ -58,6 +59,7 @@ export type TaskFilter =
 
 /** Lista de tareas de un usuario según el filtro. Siempre filtra por userId. */
 export async function listTasks(userId: string, timeZone: string, filter: TaskFilter, today: DateStr) {
+  if (filter.kind !== "done") await rollRecurringTasks(userId, timeZone, today);
   const pending = { userId, completedAt: null };
   let where: Prisma.TaskWhereInput;
   switch (filter.kind) {
@@ -122,6 +124,90 @@ export async function completeTask(userId: string, id: string, timeZone: string,
   return { spawnedId };
 }
 
+type TimingSource = Pick<Task, "dueAt" | "reminderMode" | "reminderAt" | "reminderMinutesBefore">;
+
+/** Hora y aviso de una tarea trasladados de `from` a `to` (misma hora local, mismo desfase del aviso). */
+function timingOn(task: TimingSource, from: DateStr, to: DateStr, timeZone: string) {
+  const offsetDays = Math.round((dateStrToDb(to).getTime() - dateStrToDb(from).getTime()) / 86400000);
+  return computeTaskTiming(
+    {
+      dueDate: to,
+      time: task.dueAt ? localMinutes(task.dueAt, timeZone) : null,
+      reminderMode: task.reminderMode,
+      reminderDate: task.reminderAt ? addDays(localDateStr(task.reminderAt, timeZone), offsetDays) : null,
+      reminderTime: task.reminderAt ? localMinutes(task.reminderAt, timeZone) : null,
+      reminderMinutesBefore: task.reminderMinutesBefore,
+    },
+    timeZone,
+  );
+}
+
+const rollSelect = {
+  id: true,
+  dueDate: true,
+  recurrence: true,
+  recurrenceDays: true,
+  dueAt: true,
+  reminderMode: true,
+  reminderAt: true,
+  reminderMinutesBefore: true,
+} satisfies Prisma.TaskSelect;
+
+/**
+ * Una tarea repetitiva sin hacer no se queda atrasada: pasa a la ocurrencia
+ * que toca hoy (con «cada día», a hoy), con su hora y su aviso de ese día.
+ * Así cada día tienes la tarea de ese día. Comprueba la fecha anterior al
+ * actualizar para no pisar un cambio simultáneo.
+ */
+async function rollTasks(
+  tasks: (Prisma.TaskGetPayload<{ select: typeof rollSelect }> & { timeZone: string })[],
+  now: Date,
+): Promise<number> {
+  let moved = 0;
+  await Promise.all(
+    tasks.map(async (t) => {
+      if (!t.dueDate) return;
+      const from = dbToDateStr(t.dueDate);
+      const to = currentOccurrence(from, localDateStr(now, t.timeZone), t.recurrence, t.recurrenceDays);
+      if (!to) return;
+      const res = await db.task.updateMany({
+        where: { id: t.id, completedAt: null, dueDate: t.dueDate },
+        data: timingOn(t, from, to, t.timeZone),
+      });
+      moved += res.count;
+    }),
+  );
+  return moved;
+}
+
+const overdueRecurring = (before: Date) =>
+  ({ completedAt: null, recurrence: { not: "NONE" }, dueDate: { lt: before } }) satisfies Prisma.TaskWhereInput;
+
+/** Pone al día las tareas repetitivas atrasadas de un usuario (al abrir Hoy o Tareas). */
+export async function rollRecurringTasks(userId: string, timeZone: string, today: DateStr, now = new Date()) {
+  const tasks = await db.task.findMany({
+    where: { userId, ...overdueRecurring(dateStrToDb(today)) },
+    select: rollSelect,
+    take: 200,
+  });
+  if (!tasks.length) return 0;
+  return rollTasks(tasks.map((t) => ({ ...t, timeZone })), now);
+}
+
+/** Lo mismo para todos los usuarios (limpieza horaria del cron), para que el aviso del día llegue aunque no abras la app. */
+export async function rollAllRecurringTasks(now = new Date()) {
+  // Mañana en UTC cubre cualquier zona horaria; luego se afina con la de cada usuario.
+  const tasks = await db.task.findMany({
+    where: { ...overdueRecurring(dateStrToDb(addDays(localDateStr(now, "UTC"), 1))), user: { disabledAt: null } },
+    select: { ...rollSelect, user: { select: { settings: { select: { timezone: true } } } } },
+    take: 2000,
+  });
+  return rollTasks(
+    tasks.map(({ user, ...t }) => ({ ...t, timeZone: user.settings?.timezone ?? DEFAULT_TZ })),
+    now,
+  );
+}
+
 async function spawnNext(
   task: Task & { subtasks: { title: string; position: number }[] },
   timeZone: string,
@@ -132,18 +218,7 @@ async function spawnNext(
   const next = nextOccurrence(base, today, task.recurrence, task.recurrenceDays);
   if (!next) return null;
 
-  const offsetDays = Math.round((dateStrToDb(next).getTime() - dateStrToDb(base).getTime()) / 86400000);
-  const timing = computeTaskTiming(
-    {
-      dueDate: next,
-      time: task.dueAt ? localMinutes(task.dueAt, timeZone) : null,
-      reminderMode: task.reminderMode,
-      reminderDate: task.reminderAt ? addDays(localDateStr(task.reminderAt, timeZone), offsetDays) : null,
-      reminderTime: task.reminderAt ? localMinutes(task.reminderAt, timeZone) : null,
-      reminderMinutesBefore: task.reminderMinutesBefore,
-    },
-    timeZone,
-  );
+  const timing = timingOn(task, base, next, timeZone);
 
   try {
     return await db.task.create({

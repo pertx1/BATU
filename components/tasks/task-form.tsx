@@ -226,8 +226,13 @@ export function TaskForm({
             <WeekdayPicker value={recurrenceDays} onChange={setRecurrenceDays} />
           </div>
         ) : null}
-        {recurrence !== "NONE" && !dueDate ? (
-          <p className="mt-1.5 text-xs text-muted">Empezará hoy.</p>
+        {recurrence !== "NONE" ? (
+          <p className="mt-1.5 px-1 text-sm text-muted">
+            {recurrence === "DAILY"
+              ? "La tendrás cada día en Hoy, con su aviso. Si un día no la haces, pasa al siguiente sin quedarse atrasada."
+              : "Al marcarla aparece la siguiente. Si no la haces, pasa a la siguiente fecha que le toque."}
+            {!dueDate ? " Empieza hoy." : ""}
+          </p>
         ) : null}
       </div>
 
