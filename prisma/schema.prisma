@@ -1,0 +1,418 @@
+// Esquema de datos de Batu.
+// Reglas: todo lo que pertenece a un usuario lleva userId (indexado) y se borra
+// en cascada con él. Los instantes se guardan en UTC (timestamptz); las fechas
+// "de calendario" sin hora (fecha de una tarea, día de un hábito, eventos de
+// todo el día, fechas límite) se guardan como DATE en el día local del usuario.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // Neon: URL con pooler (runtime)
+  directUrl = env("DIRECT_URL") // Neon: URL directa (migraciones)
+}
+
+// ───────────────────────── Cuentas ─────────────────────────
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique // siempre en minúsculas
+  passwordHash String
+  name         String?
+  onboardedAt  DateTime?
+  disabledAt   DateTime? // desactivada por el admin
+  lastActiveAt DateTime? // se actualiza como mucho cada 5 min
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  settings          Settings?
+  sessions          Session[]
+  resetTokens       PasswordResetToken[]
+  projects          Project[]
+  tasks             Task[]
+  subtasks          Subtask[]
+  habits            Habit[]
+  habitLogs         HabitLog[]
+  events            Event[]
+  goals             Goal[]
+  goalMilestones    GoalMilestone[]
+  goalProgressLogs  GoalProgressLog[]
+  weeklyReviews     WeeklyReview[]
+  pushSubscriptions PushSubscription[]
+  notificationLogs  NotificationLog[]
+}
+
+model Session {
+  id         String   @id // SHA-256 del token de la cookie
+  userId     String
+  expiresAt  DateTime
+  lastSeenAt DateTime @default(now())
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pushSubscriptions PushSubscription[]
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// No es dato de usuario (puede referirse a emails que no existen). Se purga a las 24 h.
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  email     String
+  ip        String?
+  success   Boolean
+  createdAt DateTime @default(now())
+
+  @@index([email, createdAt])
+  @@index([ip, createdAt])
+}
+
+model Settings {
+  userId           String    @id
+  timezone         String    @default("Europe/Madrid")
+  // Horas en minutos desde medianoche, en la zona horaria del usuario
+  morningTime      Int       @default(480) // 08:00
+  eveningTime      Int       @default(1290) // 21:30
+  overdueTime      Int       @default(540) // 09:00
+  weeklyReviewTime Int       @default(1080) // domingo 18:00
+  dndEnabled       Boolean   @default(false)
+  dndStart         Int       @default(1380) // 23:00
+  dndEnd           Int       @default(450) // 07:30
+  notifyTasks      Boolean   @default(true)
+  notifyEvents     Boolean   @default(true)
+  notifyHabits     Boolean   @default(true)
+  notifyMorning    Boolean   @default(true)
+  notifyEvening    Boolean   @default(true)
+  notifyOverdue    Boolean   @default(true)
+  notifyWeekly     Boolean   @default(true)
+  // Próximo disparo (UTC) de los avisos periódicos; lo mantiene el servidor
+  nextMorningAt    DateTime?
+  nextEveningAt    DateTime?
+  nextOverdueAt    DateTime?
+  nextWeeklyAt     DateTime?
+  updatedAt        DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([nextMorningAt])
+  @@index([nextEveningAt])
+  @@index([nextOverdueAt])
+  @@index([nextWeeklyAt])
+}
+
+// ───────────────────────── Organización ─────────────────────────
+
+model Project {
+  id         String    @id @default(cuid())
+  userId     String
+  name       String
+  color      String // hex, p. ej. "#6366f1"
+  emoji      String?
+  position   Int       @default(0)
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks  Task[]
+  events Event[]
+  goals  Goal[]
+
+  @@index([userId, position])
+}
+
+enum Priority {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum Recurrence {
+  NONE
+  DAILY
+  WEEKDAYS // días concretos: recurrenceDays
+  WEEKLY
+  MONTHLY
+}
+
+enum ReminderMode {
+  NONE
+  AT_TIME // a una hora concreta (reminderAt)
+  BEFORE // X minutos antes de dueAt
+}
+
+model Task {
+  id        String   @id @default(cuid())
+  userId    String
+  projectId String?
+  goalId    String?
+  title     String
+  notes     String?
+  priority  Priority @default(MEDIUM)
+
+  dueDate DateTime? @db.Date // día local; null = sin fecha
+  dueAt   DateTime? // instante UTC si tiene hora
+
+  reminderMode          ReminderMode @default(NONE)
+  reminderAt            DateTime? // AT_TIME (UTC)
+  reminderMinutesBefore Int? // BEFORE
+  remindAt              DateTime? // disparo efectivo calculado (incluye posposiciones)
+
+  recurrence     Recurrence @default(NONE)
+  recurrenceDays Int[] // 0=domingo … 6=sábado
+  seriesId       String? // agrupa las ocurrencias de una serie
+  spawnedFromId  String?    @unique // ocurrencia que la generó (evita duplicados, permite deshacer)
+
+  completedAt DateTime?
+  position    Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project  Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  goal     Goal?     @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  subtasks Subtask[]
+
+  @@index([userId, completedAt, dueDate])
+  @@index([userId, projectId])
+  @@index([userId, goalId])
+  @@index([remindAt])
+}
+
+model Subtask {
+  id       String  @id @default(cuid())
+  userId   String
+  taskId   String
+  title    String
+  done     Boolean @default(false)
+  position Int     @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([taskId])
+}
+
+model Habit {
+  id             String    @id @default(cuid())
+  userId         String
+  name           String
+  emoji          String?
+  color          String?
+  daysOfWeek     Int[] // vacío = todos los días; 0=domingo … 6=sábado
+  reminderTime   Int? // minutos locales desde medianoche
+  nextReminderAt DateTime? // UTC, lo mantiene el servidor
+  archivedAt     DateTime?
+  position       Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  logs HabitLog[]
+
+  @@index([userId])
+  @@index([nextReminderAt])
+}
+
+model HabitLog {
+  id        String   @id @default(cuid())
+  userId    String
+  habitId   String
+  date      DateTime @db.Date // día local del usuario
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, date])
+  @@index([userId, date])
+}
+
+model Event {
+  id        String    @id @default(cuid())
+  userId    String
+  projectId String?
+  title     String
+  location  String?
+  notes     String?
+  allDay    Boolean   @default(false)
+  startDate DateTime  @db.Date // día local de inicio
+  endDate   DateTime  @db.Date // día local de fin
+  startAt   DateTime? // UTC; null si allDay
+  endAt     DateTime?
+
+  reminderMinutesBefore Int? // 5, 15, 30, 60 o 1440
+  remindAt              DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([userId, startDate])
+  @@index([remindAt])
+}
+
+// ───────────────────────── Objetivos ─────────────────────────
+
+enum GoalStatus {
+  ACTIVE
+  PAUSED
+  ACHIEVED
+}
+
+enum GoalType {
+  NUMERIC
+  MILESTONES
+  TASKS
+}
+
+model Goal {
+  id           String     @id @default(cuid())
+  userId       String
+  projectId    String?
+  title        String
+  description  String?
+  why          String?
+  deadline     DateTime?  @db.Date
+  status       GoalStatus @default(ACTIVE)
+  type         GoalType
+  startValue   Float?
+  currentValue Float?
+  targetValue  Float?
+  unit         String?
+  isFocus      Boolean    @default(false) // índice único parcial en SQL: un foco por usuario
+  achievedAt   DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project      Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  milestones   GoalMilestone[]
+  progressLogs GoalProgressLog[]
+  tasks        Task[]
+
+  @@index([userId, status])
+}
+
+model GoalMilestone {
+  id       String    @id @default(cuid())
+  userId   String
+  goalId   String
+  title    String
+  doneAt   DateTime?
+  position Int       @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goal Goal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([goalId])
+}
+
+model GoalProgressLog {
+  id        String   @id @default(cuid())
+  userId    String
+  goalId    String
+  value     Float
+  date      DateTime @db.Date
+  note      String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goal Goal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([goalId, date])
+}
+
+model WeeklyReview {
+  id             String   @id @default(cuid())
+  userId         String
+  weekStart      DateTime @db.Date // lunes de la semana revisada
+  completedCount Int
+  pendingCount   Int
+  completedItems Json? // títulos completados (foto fija)
+  nextWeekFocus  String?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, weekStart])
+}
+
+// ───────────────────────── Push ─────────────────────────
+
+model PushSubscription {
+  id            String    @id @default(cuid())
+  userId        String
+  sessionId     String? // al cerrar sesión se borra en cascada
+  endpoint      String    @unique
+  p256dh        String
+  auth          String
+  userAgent     String?
+  createdAt     DateTime  @default(now())
+  lastSuccessAt DateTime?
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session Session? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([sessionId])
+}
+
+enum NotificationKind {
+  TASK
+  EVENT
+  HABIT
+  MORNING
+  EVENING
+  OVERDUE
+  WEEKLY
+  TEST
+}
+
+enum NotificationStatus {
+  PENDING // reservado por un tick
+  SENT
+  FAILED
+  SKIPPED
+}
+
+model NotificationLog {
+  id           String             @id @default(cuid())
+  userId       String
+  kind         NotificationKind
+  key          String // "task:<id>:<remindAt ISO>", "morning:2026-10-01"…
+  status       NotificationStatus @default(PENDING)
+  scheduledFor DateTime
+  sentAt       DateTime?
+  error        String?
+  createdAt    DateTime           @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([userId, createdAt])
+}

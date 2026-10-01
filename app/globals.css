@@ -1,0 +1,130 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f6f6f9;
+  --surface: #ffffff;
+  --surface-2: #eeeef3;
+  --fg: #16161d;
+  --muted: #6b6b7b;
+  --line: #e3e3ea;
+  --accent: #5b4cf0;
+  --accent-fg: #ffffff;
+  --accent-soft: #ecebff;
+  --danger: #e5484d;
+  --danger-soft: #fdecec;
+  --success: #2fa36b;
+  --success-soft: #e4f6ec;
+  --warning: #e09b16;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0c0c11;
+    --surface: #17171f;
+    --surface-2: #22222c;
+    --fg: #f1f1f5;
+    --muted: #9a9aab;
+    --line: #2a2a35;
+    --accent: #8b7fff;
+    --accent-fg: #0c0c11;
+    --accent-soft: #25224a;
+    --danger: #ff6b6f;
+    --danger-soft: #3a1c1e;
+    --success: #4cc38a;
+    --success-soft: #16301f;
+    --warning: #f5b546;
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    sans-serif;
+  --animate-pop: pop 260ms cubic-bezier(0.2, 0.9, 0.3, 1.4);
+  --animate-fade-up: fade-up 220ms ease-out;
+  --animate-sheet-up: sheet-up 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  @keyframes pop {
+    0% { transform: scale(0.6); }
+    60% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+  }
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes sheet-up {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--fg);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior-y: none;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+/* iOS no hace zoom en inputs con font-size >= 16px */
+input,
+select,
+textarea,
+button {
+  font-size: 16px;
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl bg-surface border border-line;
+  }
+  .input {
+    @apply w-full rounded-xl border border-line bg-surface px-4 py-3 text-base text-fg outline-none transition placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-accent/25;
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-muted;
+  }
+  .btn {
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 text-base font-semibold transition active:scale-[0.97] disabled:opacity-50 disabled:active:scale-100;
+  }
+  .btn-primary {
+    @apply bg-accent text-accent-fg;
+  }
+  .btn-secondary {
+    @apply bg-surface-2 text-fg;
+  }
+  .btn-danger {
+    @apply bg-danger text-white;
+  }
+  .btn-ghost {
+    @apply bg-transparent text-accent;
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
