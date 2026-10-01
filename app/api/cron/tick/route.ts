@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { describeServerError } from "@/lib/api";
 import { ensureMigrated } from "@/lib/migrate";
 import { runTick } from "@/lib/notifications/tick";
+import { notificationEnvStatus } from "@/lib/deploy-info";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -28,7 +29,16 @@ function authorized(req: NextRequest): boolean {
  */
 export async function GET(req: NextRequest) {
   if (!process.env.CRON_SECRET?.trim()) {
-    return NextResponse.json({ ok: false, error: "Falta la variable CRON_SECRET en el servidor." }, { status: 503 });
+    const info = notificationEnvStatus();
+    return NextResponse.json(
+      {
+        ok: false,
+        error: `Falta la variable CRON_SECRET en el servidor (entorno de Vercel: ${info.entorno}).`,
+        ayuda: `En Vercel → Settings → Environment Variables, añade CRON_SECRET marcando «${info.entorno === "production" ? "Production" : info.entorno === "preview" ? "Preview" : "Production y Preview"}» y haz Redeploy.`,
+        ...info,
+      },
+      { status: 503 },
+    );
   }
   if (!authorized(req)) return NextResponse.json({ ok: false, error: "Clave incorrecta" }, { status: 401 });
 

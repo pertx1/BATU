@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { describeServerError } from "@/lib/api";
 import { databaseEnvNames, diagnoseEnv, resolveDatabaseUrls } from "@/lib/db-url.mjs";
 import { ensureMigrated, migrationStatus } from "@/lib/migrate";
+import { notificationEnvStatus } from "@/lib/deploy-info";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +46,7 @@ export async function GET() {
 
   const ok = mig.ok && tables.ok;
   // Todo bien: no hace falta enseñar detalles de la configuración.
-  if (ok) return NextResponse.json({ ok: true, conexion: "ok", tablas: "ok" });
+  if (ok) return NextResponse.json({ ok: true, conexion: "ok", tablas: "ok", configuracion: notificationEnvStatus() });
   return NextResponse.json(
     {
       ok,
