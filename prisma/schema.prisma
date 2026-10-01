@@ -45,6 +45,13 @@ model User {
   ideas             Idea[]
   pushSubscriptions PushSubscription[]
   notificationLogs  NotificationLog[]
+  stats             UserStats?
+  xpEvents          XpEvent[]
+  streakDays        StreakDay[]
+  achievements      UserAchievement[]
+  items             UserItem[]
+  challenges        WeeklyChallenge[]
+  antolaMessages    AntolaMessageLog[]
 }
 
 model Session {
@@ -88,29 +95,39 @@ model LoginAttempt {
 }
 
 model Settings {
-  userId           String    @id
-  timezone         String    @default("Europe/Madrid")
+  userId              String     @id
+  timezone            String     @default("Europe/Madrid")
   // Horas en minutos desde medianoche, en la zona horaria del usuario
-  morningTime      Int       @default(480) // 08:00
-  eveningTime      Int       @default(1290) // 21:30
-  overdueTime      Int       @default(540) // 09:00
-  weeklyReviewTime Int       @default(1080) // domingo 18:00
-  dndEnabled       Boolean   @default(false)
-  dndStart         Int       @default(1380) // 23:00
-  dndEnd           Int       @default(450) // 07:30
-  notifyTasks      Boolean   @default(true)
-  notifyEvents     Boolean   @default(true)
-  notifyHabits     Boolean   @default(true)
-  notifyMorning    Boolean   @default(true)
-  notifyEvening    Boolean   @default(true)
-  notifyOverdue    Boolean   @default(true)
-  notifyWeekly     Boolean   @default(true)
+  morningTime         Int        @default(480) // 08:00
+  eveningTime         Int        @default(1290) // 21:30
+  overdueTime         Int        @default(540) // 09:00
+  weeklyReviewTime    Int        @default(1080) // domingo 18:00
+  dndEnabled          Boolean    @default(false)
+  dndStart            Int        @default(1380) // 23:00
+  dndEnd              Int        @default(450) // 07:30
+  notifyTasks         Boolean    @default(true)
+  notifyEvents        Boolean    @default(true)
+  notifyHabits        Boolean    @default(true)
+  notifyMorning       Boolean    @default(true)
+  notifyEvening       Boolean    @default(true)
+  notifyOverdue       Boolean    @default(true)
+  notifyWeekly        Boolean    @default(true)
+  // Antola (gamificación)
+  gamificationEnabled Boolean    @default(true)
+  antolaOnToday       Boolean    @default(true)
+  soundsEnabled       Boolean    @default(false)
+  antolaTone          AntolaTone @default(LIVELY)
+  notifyStreakRisk    Boolean    @default(true)
+  notifyRewards       Boolean    @default(true)
+  notifyMissYou       Boolean    @default(true)
   // Próximo disparo (UTC) de los avisos periódicos; lo mantiene el servidor
-  nextMorningAt    DateTime?
-  nextEveningAt    DateTime?
-  nextOverdueAt    DateTime?
-  nextWeeklyAt     DateTime?
-  updatedAt        DateTime  @updatedAt
+  nextMorningAt       DateTime?
+  nextEveningAt       DateTime?
+  nextOverdueAt       DateTime?
+  nextWeeklyAt        DateTime?
+  nextStreakAt        DateTime? // racha en peligro (20:00)
+  nextMissYouAt       DateTime? // "te echo de menos" (18:30)
+  updatedAt           DateTime   @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -118,6 +135,8 @@ model Settings {
   @@index([nextEveningAt])
   @@index([nextOverdueAt])
   @@index([nextWeeklyAt])
+  @@index([nextStreakAt])
+  @@index([nextMissYouAt])
 }
 
 // ───────────────────────── Organización ─────────────────────────
@@ -394,6 +413,9 @@ enum NotificationKind {
   OVERDUE
   WEEKLY
   TEST
+  STREAK_RISK
+  REWARD
+  MISS_YOU
 }
 
 enum NotificationStatus {
@@ -432,4 +454,135 @@ model Idea {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, pinned, createdAt])
+}
+
+// ─── Antola: gamificación ──────────────────────────────────────────────────
+// Los catálogos (logros, tienda, plantillas de retos, mensajes) están en código
+// (lib/antola/*); aquí solo se guarda lo de cada usuario.
+
+enum AntolaTone {
+  LIVELY // animado
+  CALM // tranquilo
+}
+
+enum XpKind {
+  TASK
+  HABIT
+  DAY_COMPLETE
+  REVIEW
+  MILESTONE
+  GOAL
+  ACHIEVEMENT
+  CHALLENGE
+}
+
+enum ChallengeKind {
+  TASKS
+  HIGH_PRIORITY
+  HABIT_DAYS
+  PROJECT_TASKS
+  PRODUCTIVE_DAYS
+  EARLY_TASKS
+}
+
+model UserStats {
+  userId            String    @id
+  xp                Int       @default(0) // suma de XpEvent.xp
+  level             Int       @default(1)
+  crumbs            Int       @default(0) // migas disponibles
+  currentStreak     Int       @default(0) // días productivos seguidos hasta el último día cerrado
+  bestStreak        Int       @default(0)
+  streakShields     Int       @default(0) // protectores de racha (máx. 2)
+  lastProductiveDay DateTime? @db.Date
+  lastClosedDay     DateTime? @db.Date // último día cerrado (el cierre no se repite)
+  lastMissYouAt     DateTime?
+  backfilledAt      DateTime? // XP de la actividad anterior ya calculada
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([lastClosedDay])
+}
+
+/// La fila existe ⇔ esos XP están ganados. Desmarcar borra la fila y resta.
+model XpEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  kind      XpKind
+  refId     String // tarea, "hábito:día", día, semana, hito, objetivo, logro, reto
+  xp        Int
+  crumbs    Int      @default(0) // migas extra (logros y retos)
+  day       DateTime @db.Date // día local en que se ganó
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, kind, refId]) // anti-trampas: una vez por elemento
+  @@index([userId, day])
+}
+
+model StreakDay {
+  userId     String
+  day        DateTime @db.Date
+  productive Boolean
+  shieldUsed Boolean  @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, day])
+}
+
+model UserAchievement {
+  userId        String
+  achievementId String
+  unlockedAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, achievementId])
+}
+
+model UserItem {
+  userId      String
+  itemId      String
+  equipped    Boolean  @default(false)
+  purchasedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, itemId])
+}
+
+model WeeklyChallenge {
+  id           String        @id @default(cuid())
+  userId       String
+  weekStart    DateTime      @db.Date // lunes local
+  slot         Int // 0, 1, 2
+  kind         ChallengeKind
+  target       Int
+  refId        String? // p. ej. el proyecto del reto
+  label        String // texto ya resuelto ("Termina 2 tareas de Trabajo")
+  progress     Int           @default(0)
+  rewardXp     Int
+  rewardCrumbs Int
+  completedAt  DateTime?
+  createdAt    DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, weekStart, slot])
+}
+
+model AntolaMessageLog {
+  id        String   @id @default(cuid())
+  userId    String
+  messageId String
+  situation String
+  text      String // el texto mostrado (se reutiliza un rato para que no cambie en cada recarga)
+  shownAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, shownAt])
 }

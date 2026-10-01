@@ -5,10 +5,11 @@ import { assertOwnProject } from "@/lib/data/ownership";
 import { syncCurrentValue } from "@/lib/data/goals";
 import { blankToNull, updateGoalSchema } from "@/lib/goal-input";
 import { dateStrToDb } from "@/lib/dates";
+import { award } from "@/lib/gamification";
 
 type Params = { id: string };
 
-export const PATCH = withUser<Params>(async (req, { userId }, { id }) => {
+export const PATCH = withUser<Params>(async (req, { userId, user }, { id }) => {
   const body = await parseBody(req, updateGoalSchema);
   const current = await db.goal.findFirst({ where: { id, userId } });
   if (!current) throw notFound();
@@ -41,7 +42,12 @@ export const PATCH = withUser<Params>(async (req, { userId }, { id }) => {
     });
     if (numeric) await syncCurrentValue(tx, userId, id);
   });
-  return NextResponse.json({ ok: true });
+  // Conseguido → 200 XP (una vez); si deja de estarlo, se restan.
+  const gamification =
+    (status === "ACHIEVED") !== (current.status === "ACHIEVED")
+      ? await award(user, { type: "goal", goalId: id, achieved: status === "ACHIEVED" })
+      : null;
+  return NextResponse.json({ ok: true, gamification });
 });
 
 export const DELETE = withUser<Params>(async (_req, { userId }, { id }) => {

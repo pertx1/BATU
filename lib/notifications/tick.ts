@@ -3,6 +3,7 @@ import type { NotificationKind, Priority } from "@prisma/client";
 import { db } from "@/lib/db";
 import { dateStrToDb, dbToDateStr, DEFAULT_TZ, localDateStr, todayStr, type DateStr } from "@/lib/dates";
 import { rollAllRecurringTasks } from "@/lib/data/tasks";
+import { closeAllDays, ensureAllWeekChallenges } from "@/lib/gamification";
 import { isScheduledOn } from "@/lib/habits";
 import { nextHabitReminderAt } from "@/lib/schedule";
 import { vapidConfig } from "@/lib/push";
@@ -473,7 +474,8 @@ export async function runTick(now: Date = new Date()): Promise<TickReport> {
 /**
  * Limpieza horaria: registros viejos, sesiones caducadas y enlaces de
  * recuperación usados. Además pasa al día las tareas repetitivas sin hacer
- * (y con ellas su aviso de hoy).
+ * (y con ellas su aviso de hoy), cierra el día de Antola (rachas) y crea los
+ * retos semanales.
  */
 async function housekeeping(now: Date) {
   const ago = (days: number) => new Date(now.getTime() - days * 86400000);
@@ -483,6 +485,9 @@ async function housekeeping(now: Date) {
     db.session.deleteMany({ where: { expiresAt: { lt: now } } }),
     db.passwordResetToken.deleteMany({ where: { OR: [{ expiresAt: { lt: now } }, { usedAt: { not: null } }] } }),
     rollAllRecurringTasks(now),
+    db.antolaMessageLog.deleteMany({ where: { shownAt: { lt: ago(LOG_RETENTION_DAYS) } } }),
+    // Antola: cierre del día (rachas y protectores) y retos de la semana, por zona horaria.
+    closeAllDays(now).then(() => ensureAllWeekChallenges(now)),
   ]);
 }
 

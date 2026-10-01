@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { HttpError, notFound, parseBody, withUser } from "@/lib/api";
 import { dateStrToDb, todayStr } from "@/lib/dates";
 import { dateStrSchema } from "@/lib/validation";
+import { award } from "@/lib/gamification";
 
 const schema = z.object({ date: dateStrSchema.optional(), done: z.boolean() });
 
@@ -27,5 +28,6 @@ export const POST = withUser<{ id: string }>(async (req, { userId, user }, { id 
   } else {
     await db.habitLog.deleteMany({ where: { userId, habitId: id, date: dbDate } });
   }
-  return NextResponse.json({ ok: true, date, done: body.done });
+  const gamification = await award(user, { type: "habit", habitId: id, date, done: body.done });
+  return NextResponse.json({ ok: true, date, done: body.done, gamification });
 });

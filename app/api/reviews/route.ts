@@ -5,6 +5,7 @@ import { HttpError, parseBody, withUser } from "@/lib/api";
 import { pendingWhere, weekRange } from "@/lib/data/review";
 import { dateStrToDb, dayOfWeek, startOfWeekMonday, todayStr } from "@/lib/dates";
 import { dateStrSchema, idSchema } from "@/lib/validation";
+import { award } from "@/lib/gamification";
 
 const schema = z.object({
   weekStart: dateStrSchema,
@@ -51,5 +52,7 @@ export const POST = withUser(async (req, { userId, user }) => {
     update: data,
     select: { id: true },
   });
-  return NextResponse.json(review);
+  // 50 XP una sola vez por semana revisada (actualizarla no suma de nuevo).
+  const gamification = await award(user, { type: "review", weekStart: body.weekStart });
+  return NextResponse.json({ ...review, gamification });
 });

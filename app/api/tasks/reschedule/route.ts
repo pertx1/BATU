@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { parseBody, withUser } from "@/lib/api";
 import { fieldsToData, taskToFields } from "@/lib/task-input";
 import { dateStrSchema, idSchema } from "@/lib/validation";
+import { award } from "@/lib/gamification";
 
 const schema = z.object({
   ids: z.array(idSchema).min(1).max(200),
@@ -22,5 +23,11 @@ export const POST = withUser(async (req, { userId, user }) => {
       }),
     ),
   );
-  return NextResponse.json({ ok: true, updated: tasks.length });
+  // Programar lo de la bandeja puede dejarla a cero (logro «Bandeja vacía»).
+  const fromInbox = tasks.some((t) => !t.projectId && !t.dueDate);
+  const gamification =
+    fromInbox && (await db.task.count({ where: { userId, completedAt: null, projectId: null, dueDate: null } })) === 0
+      ? await award(user, { type: "check", inboxZero: true })
+      : null;
+  return NextResponse.json({ ok: true, updated: tasks.length, gamification });
 });

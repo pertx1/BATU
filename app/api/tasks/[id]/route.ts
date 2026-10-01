@@ -4,6 +4,12 @@ import { notFound, parseBody, withUser } from "@/lib/api";
 import { assertOwnGoal, assertOwnProject } from "@/lib/data/ownership";
 import { getTaskView } from "@/lib/data/tasks";
 import { fieldsToData, taskToFields, updateTaskSchema } from "@/lib/task-input";
+import { award } from "@/lib/gamification";
+
+/** ¿Ha quedado la bandeja de entrada a cero? (logro «Bandeja vacía»). */
+async function inboxZero(userId: string) {
+  return (await db.task.count({ where: { userId, completedAt: null, projectId: null, dueDate: null } })) === 0;
+}
 
 type Params = { id: string };
 
@@ -34,11 +40,19 @@ export const PATCH = withUser<Params>(async (req, { userId, user }, { id }) => {
     sameInstant(data.dueDate, current.dueDate);
   if (sameTiming) data.remindAt = current.remindAt;
   await db.task.update({ where: { id, userId }, data });
-  return NextResponse.json({ ok: true });
+  const wasInbox = !current.completedAt && !current.projectId && !current.dueDate;
+  const gamification =
+    wasInbox && (data.projectId || data.dueDate) && (await inboxZero(userId))
+      ? await award(user, { type: "check", inboxZero: true })
+      : null;
+  return NextResponse.json({ ok: true, gamification });
 });
 
-export const DELETE = withUser<Params>(async (_req, { userId }, { id }) => {
+export const DELETE = withUser<Params>(async (_req, { userId, user }, { id }) => {
+  const current = await db.task.findFirst({ where: { id, userId }, select: { completedAt: true, projectId: true, dueDate: true } });
   const res = await db.task.deleteMany({ where: { id, userId } });
   if (res.count === 0) throw notFound();
-  return NextResponse.json({ ok: true });
+  const wasInbox = current && !current.completedAt && !current.projectId && !current.dueDate;
+  const gamification = wasInbox && (await inboxZero(userId)) ? await award(user, { type: "check", inboxZero: true }) : null;
+  return NextResponse.json({ ok: true, gamification });
 });

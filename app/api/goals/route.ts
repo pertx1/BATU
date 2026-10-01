@@ -4,8 +4,9 @@ import { parseBody, withUser } from "@/lib/api";
 import { assertOwnProject } from "@/lib/data/ownership";
 import { blankToNull, createGoalSchema } from "@/lib/goal-input";
 import { dateStrToDb } from "@/lib/dates";
+import { award } from "@/lib/gamification";
 
-export const POST = withUser(async (req, { userId }) => {
+export const POST = withUser(async (req, { userId, user }) => {
   const body = await parseBody(req, createGoalSchema);
   await assertOwnProject(userId, body.projectId);
   const numeric = body.type === "NUMERIC";
@@ -32,5 +33,7 @@ export const POST = withUser(async (req, { userId }) => {
     },
     select: { id: true },
   });
-  return NextResponse.json(goal, { status: 201 });
+  // Primer objetivo → logro «Soñadora».
+  const gamification = await award(user, { type: "check" });
+  return NextResponse.json({ ...goal, gamification }, { status: 201 });
 });
