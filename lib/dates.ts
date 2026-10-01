@@ -115,6 +115,13 @@ export function relativeDayLabel(s: DateStr, today: DateStr): string {
   return formatDateStr(s, sameYear ? "EEE d MMM" : "d MMM yyyy");
 }
 
+/** "28 sep – 4 oct 2026" (semana de lunes a domingo). */
+export function weekLabel(weekStart: DateStr): string {
+  const end = addDays(weekStart, 6);
+  const sameMonth = weekStart.slice(0, 7) === end.slice(0, 7);
+  return `${formatDateStr(weekStart, sameMonth ? "d" : "d MMM")} – ${formatDateStr(end, "d MMM yyyy")}`;
+}
+
 export function localHour(date: Date, timeZone: string): number {
   return Number(formatInTimeZone(date, timeZone, "H"));
 }

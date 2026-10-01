@@ -2,7 +2,7 @@ import "server-only";
 import { db } from "@/lib/db";
 import { dateStrToDb, type DateStr } from "@/lib/dates";
 import { toEventView } from "@/lib/data/calendar";
-import { goalProgress } from "@/lib/goals";
+import { goalInclude, toGoalView } from "@/lib/data/goals";
 import { listHabitViews } from "@/lib/data/habits";
 import { taskInclude, taskOrder, toTaskView } from "@/lib/data/tasks";
 
@@ -34,13 +34,7 @@ export async function getTodayData(userId: string, timeZone: string, today: Date
       include: { project: { select: { id: true, name: true, color: true, emoji: true } } },
       orderBy: [{ allDay: "desc" }, { startAt: "asc" }],
     }),
-    db.goal.findFirst({
-      where: { userId, isFocus: true },
-      include: {
-        milestones: { select: { doneAt: true } },
-        tasks: { select: { completedAt: true } },
-      },
-    }),
+    db.goal.findFirst({ where: { userId, isFocus: true }, include: goalInclude }),
   ]);
 
   const tasks = todayRaw.map((t) => toTaskView(t, timeZone));
@@ -50,25 +44,10 @@ export async function getTodayData(userId: string, timeZone: string, today: Date
 
   const events = eventsRaw.map((e) => toEventView(e, timeZone));
 
-  let focus: FocusGoal | null = null;
-  if (focusRaw) {
-    const milestonesDone = focusRaw.milestones.filter((m) => m.doneAt).length;
-    const tasksDone = focusRaw.tasks.filter((t) => t.completedAt).length;
-    const progress = goalProgress({
-      ...focusRaw,
-      milestonesDone,
-      milestonesTotal: focusRaw.milestones.length,
-      tasksDone,
-      tasksTotal: focusRaw.tasks.length,
-    });
-    const label =
-      focusRaw.type === "NUMERIC"
-        ? `${fmt(focusRaw.currentValue ?? focusRaw.startValue ?? 0)} / ${fmt(focusRaw.targetValue ?? 0)}${focusRaw.unit ? ` ${focusRaw.unit}` : ""}`
-        : focusRaw.type === "MILESTONES"
-          ? `${milestonesDone} de ${focusRaw.milestones.length} hitos`
-          : `${tasksDone} de ${focusRaw.tasks.length} tareas`;
-    focus = { id: focusRaw.id, title: focusRaw.title, progress, label };
-  }
+  const focusView = focusRaw ? toGoalView(focusRaw) : null;
+  const focus: FocusGoal | null = focusView
+    ? { id: focusView.id, title: focusView.title, progress: focusView.progress, label: focusView.label }
+    : null;
 
   const total = tasks.length + habits.length;
   const done = tasks.filter((t) => t.completedAt).length + habits.filter((h) => h.doneToday).length;
@@ -83,6 +62,3 @@ export async function getTodayData(userId: string, timeZone: string, today: Date
   };
 }
 
-function fmt(n: number): string {
-  return new Intl.NumberFormat("es-ES", { maximumFractionDigits: 2 }).format(n);
-}

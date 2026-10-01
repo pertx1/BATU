@@ -76,13 +76,13 @@ export function habitGrid(
   return columns;
 }
 
-/** % de días programados cumplidos en un rango [from, to]. */
-export function completionRate(
+/** Días programados y cumplidos en un rango [from, to]. */
+export function habitTally(
   daysOfWeek: number[],
   done: Set<DateStr>,
   from: DateStr,
   to: DateStr,
-): number {
+): { scheduled: number; hit: number } {
   let scheduled = 0;
   let hit = 0;
   for (let day = from, i = 0; day <= to && i < 3660; day = addDays(day, 1), i++) {
@@ -91,6 +91,17 @@ export function completionRate(
       if (done.has(day)) hit++;
     }
   }
+  return { scheduled, hit };
+}
+
+/** % de días programados cumplidos en un rango [from, to]. */
+export function completionRate(
+  daysOfWeek: number[],
+  done: Set<DateStr>,
+  from: DateStr,
+  to: DateStr,
+): number {
+  const { scheduled, hit } = habitTally(daysOfWeek, done, from, to);
   return scheduled === 0 ? 0 : hit / scheduled;
 }
 

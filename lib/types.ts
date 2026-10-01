@@ -79,3 +79,27 @@ export const EVENT_REMINDER_OPTIONS: { value: number; label: string }[] = [
   { value: 60, label: "1 hora antes" },
   { value: 1440, label: "1 día antes" },
 ];
+
+export type GoalStatus = "ACTIVE" | "PAUSED" | "ACHIEVED";
+export type GoalType = "NUMERIC" | "MILESTONES" | "TASKS";
+
+export type GoalView = {
+  id: string;
+  title: string;
+  description: string | null;
+  why: string | null;
+  deadline: string | null; // DateStr
+  status: GoalStatus;
+  type: GoalType;
+  startValue: number | null;
+  currentValue: number | null;
+  targetValue: number | null;
+  unit: string | null;
+  isFocus: boolean;
+  project: ProjectView | null;
+  progress: number; // 0..1
+  label: string;
+};
+
+export type MilestoneView = { id: string; title: string; done: boolean };
+export type ProgressLogView = { id: string; value: number; date: string; note: string | null };

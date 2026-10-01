@@ -24,3 +24,30 @@ export function goalProgress(input: {
   }
   return Math.max(0, Math.min(1, p));
 }
+
+export function formatNumber(n: number): string {
+  return new Intl.NumberFormat("es-ES", { maximumFractionDigits: 2 }).format(n);
+}
+
+/** "40 / 100 kg", "3 de 5 hitos", "2 de 8 tareas". */
+export function goalProgressLabel(input: {
+  type: GoalType;
+  startValue: number | null;
+  currentValue: number | null;
+  targetValue: number | null;
+  unit: string | null;
+  milestonesDone: number;
+  milestonesTotal: number;
+  tasksDone: number;
+  tasksTotal: number;
+}): string {
+  if (input.type === "NUMERIC") {
+    const current = input.currentValue ?? input.startValue ?? 0;
+    return `${formatNumber(current)} / ${formatNumber(input.targetValue ?? 0)}${input.unit ? ` ${input.unit}` : ""}`;
+  }
+  if (input.type === "MILESTONES") return `${input.milestonesDone} de ${input.milestonesTotal} hitos`;
+  return `${input.tasksDone} de ${input.tasksTotal} tareas`;
+}
+
+export const GOAL_STATUS_LABEL = { ACTIVE: "Activo", PAUSED: "Pausado", ACHIEVED: "Conseguido" } as const;
+export const GOAL_TYPE_LABEL = { NUMERIC: "Numérico", MILESTONES: "Por hitos", TASKS: "Por tareas" } as const;
