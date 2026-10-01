@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const SESSION_COOKIE = "batu_session";
+const SESSION_COOKIE = "antola_session";
 const ONE_YEAR = 60 * 60 * 24 * 365;
 
 // Rutas accesibles sin sesión. La validación real de la sesión se hace en el

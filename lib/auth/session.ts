@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 
-export const SESSION_COOKIE = "batu_session";
+export const SESSION_COOKIE = "antola_session";
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 365; // 1 año
 const TOUCH_INTERVAL_MS = 5 * 60 * 1000;
 

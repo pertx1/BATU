@@ -1,5 +1,5 @@
 {
-  "name": "batu",
+  "name": "antola",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -8,7 +8,7 @@
     "vercel-build": "prisma generate && prisma migrate deploy && next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "db:migrate": "prisma migrate dev",
     "icons": "node scripts/generate-icons.mjs",

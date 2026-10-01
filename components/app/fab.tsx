@@ -1,16 +1,43 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Plus } from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { Inbox, Plus, SlidersHorizontal } from "lucide-react";
+import { api } from "@/lib/client/api";
+import { Sheet } from "@/components/ui/sheet";
+import { useToast } from "@/components/ui/toast";
 
-/** Botón "+" flotante de captura rápida (la captura se conecta en la fase 2). */
+/** Botón "+" flotante: apunta algo en 2 segundos. Sin fecha ni proyecto → Bandeja. */
 export function Fab() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [title, setTitle] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (open) inputRef.current?.focus();
-  }, [open]);
+  // En formularios de creación el "+" sobra.
+  if (pathname.endsWith("/nueva") || pathname.endsWith("/nuevo")) return null;
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    const t = title.trim();
+    if (!t) return;
+    setSaving(true);
+    try {
+      await api("/api/tasks", { body: { title: t } });
+      navigator.vibrate?.(10);
+      toast.show({ message: "Guardado en la Bandeja 📥" });
+      setTitle("");
+      setOpen(false);
+      router.refresh();
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <>
@@ -23,18 +50,33 @@ export function Fab() {
       >
         <Plus size={28} strokeWidth={2.5} />
       </button>
-      {open ? (
-        <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={() => setOpen(false)}>
-          <div
-            className="pb-safe w-full rounded-t-3xl bg-surface p-5 animate-sheet-up"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-line" />
-            <input ref={inputRef} className="input" placeholder="¿Qué tienes en mente?" disabled />
-            <p className="mt-3 text-center text-sm text-muted">La captura rápida llega en la siguiente fase.</p>
+      <Sheet open={open} onClose={() => setOpen(false)}>
+        <form onSubmit={save} className="space-y-3">
+          <input
+            className="input text-lg"
+            placeholder="¿Qué tienes en mente?"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            autoFocus
+            maxLength={300}
+            enterKeyHint="done"
+            aria-label="Nueva tarea"
+          />
+          <div className="flex gap-2">
+            <Link
+              href={`/tareas/nueva?title=${encodeURIComponent(title)}&back=${encodeURIComponent(pathname)}`}
+              onClick={() => setOpen(false)}
+              className="btn btn-secondary"
+              aria-label="Más opciones"
+            >
+              <SlidersHorizontal size={20} />
+            </Link>
+            <button type="submit" className="btn btn-primary flex-1" disabled={saving || !title.trim()}>
+              <Inbox size={20} /> {saving ? "Guardando…" : "Guardar en la Bandeja"}
+            </button>
           </div>
-        </div>
-      ) : null}
+        </form>
+      </Sheet>
     </>
   );
 }

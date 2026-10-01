@@ -1,10 +1,10 @@
-/* Service worker de Batu.
+/* Service worker de Antola.
  * - Caché solo de recursos estáticos (JS/CSS con hash, iconos, página offline).
  * - NUNCA se cachean páginas HTML ni respuestas de /api: contienen datos privados.
  * - Push: muestra la notificación y abre la URL al tocarla.
  */
 const VERSION = "v1";
-const STATIC_CACHE = `batu-static-${VERSION}`;
+const STATIC_CACHE = `antola-static-${VERSION}`;
 const PRECACHE = [
   "/offline.html",
   "/manifest.json",
@@ -29,7 +29,7 @@ self.addEventListener("activate", (event) => {
       .keys()
       .then((keys) =>
         Promise.all(
-          keys.filter((k) => k.startsWith("batu-") && k !== STATIC_CACHE).map((k) => caches.delete(k)),
+          keys.filter((k) => k.startsWith("antola-") && k !== STATIC_CACHE).map((k) => caches.delete(k)),
         ),
       )
       .then(() => self.clients.claim()),
@@ -81,10 +81,10 @@ self.addEventListener("push", (event) => {
   try {
     data = event.data ? event.data.json() : {};
   } catch {
-    data = { title: "Batu", body: event.data ? event.data.text() : "" };
+    data = { title: "Antola", body: event.data ? event.data.text() : "" };
   }
 
-  const title = data.title || "Batu";
+  const title = data.title || "Antola";
   const options = {
     body: data.body || "",
     icon: "/icons/icon-192.png",

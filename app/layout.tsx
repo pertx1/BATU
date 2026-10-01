@@ -4,13 +4,13 @@ import { ServiceWorkerRegistrar } from "@/components/service-worker-registrar";
 import { OfflineBanner } from "@/components/offline-banner";
 
 export const metadata: Metadata = {
-  title: { default: "Batu", template: "%s · Batu" },
+  title: { default: "Antola", template: "%s · Antola" },
   description: "Organiza tu día a día: tareas, hábitos, calendario y objetivos.",
-  applicationName: "Batu",
+  applicationName: "Antola",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    title: "Batu",
+    title: "Antola",
     statusBarStyle: "black-translucent",
   },
   formatDetection: { telephone: false },

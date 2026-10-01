@@ -13,7 +13,7 @@ export default function PrivacyPage() {
         <h2 className="text-lg font-semibold">Qué datos guardamos</h2>
         <p className="text-muted">
           Tu email, tu nombre, una versión cifrada (hash) de tu contraseña y lo que tú mismo
-          apuntas en Batu: proyectos, tareas, hábitos, eventos, objetivos, revisiones y ajustes.
+          apuntas en Antola: proyectos, tareas, hábitos, eventos, objetivos, revisiones y ajustes.
           Si activas las notificaciones, guardamos la suscripción de cada dispositivo para poder
           enviarte avisos.
         </p>

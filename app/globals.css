@@ -128,3 +128,10 @@ button {
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

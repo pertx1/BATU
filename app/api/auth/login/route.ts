@@ -41,5 +41,5 @@ export const POST = withPublic(async (req) => {
   await recordLoginAttempt(email, ip, true);
   await db.user.update({ where: { id: user.id }, data: { lastActiveAt: new Date() } });
   await createSession(user.id, req.headers.get("user-agent"));
-  return NextResponse.json({ ok: true, redirect: "/" });
+  return NextResponse.json({ ok: true, redirect: user.onboardedAt ? "/" : "/bienvenida" });
 });

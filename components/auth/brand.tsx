@@ -11,7 +11,7 @@ export function Brand({ subtitle }: { subtitle?: string }) {
         className="mb-4 rounded-2xl shadow-lg shadow-accent/20"
         priority
       />
-      <h1 className="text-3xl font-bold tracking-tight">Batu</h1>
+      <h1 className="text-3xl font-bold tracking-tight">Antola</h1>
       {subtitle ? <p className="mt-1 text-muted">{subtitle}</p> : null}
     </div>
   );

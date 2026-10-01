@@ -36,5 +36,5 @@ export const POST = withPublic(async (req) => {
   });
 
   await createSession(user.id, req.headers.get("user-agent"));
-  return NextResponse.json({ ok: true, redirect: "/" }, { status: 201 });
+  return NextResponse.json({ ok: true, redirect: "/bienvenida" }, { status: 201 });
 });

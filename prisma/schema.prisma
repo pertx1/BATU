@@ -1,4 +1,4 @@
-// Esquema de datos de Batu.
+// Esquema de datos de Antola.
 // Reglas: todo lo que pertenece a un usuario lleva userId (indexado) y se borra
 // en cascada con él. Los instantes se guardan en UTC (timestamptz); las fechas
 // "de calendario" sin hora (fecha de una tarea, día de un hábito, eventos de

@@ -1,4 +1,4 @@
-# Batu
+# Antola
 
 PWA multiusuario para organizar el día a día (tareas, hábitos, calendario y objetivos),
 pensada para usarse instalada en el iPhone y con notificaciones push.
