@@ -18,7 +18,6 @@ export async function logout() {
   }
   await api("/api/auth/logout", { method: "POST" }).catch(() => {});
   // Recarga completa a propósito: limpia todo el estado de la sesión anterior.
-  // eslint-disable-next-line @next/next/no-location-assign-relative-destination
   window.location.href = "/login";
 }
 

@@ -17,7 +17,6 @@ export async function api<T = unknown>(
   }
   if (!res.ok) {
     if (res.status === 401 && typeof window !== "undefined" && !path.startsWith("/api/auth/")) {
-      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.href = "/login";
     }
     const message =
