@@ -9,6 +9,7 @@
     "start": "next start",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
+    "test:security": "vitest run --config vitest.security.config.mts",
     "db:migrate": "prisma migrate dev",
     "icons": "node scripts/generate-icons.mjs",
     "secrets": "node scripts/generate-secrets.mjs",

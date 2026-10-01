@@ -1,83 +1,344 @@
 # Antola
 
-PWA multiusuario para organizar el día a día (tareas, hábitos, calendario y objetivos),
-pensada para usarse instalada en el iPhone y con notificaciones push.
+PWA multiusuario para organizar el día a día, pensada para usarse **instalada en el iPhone**
+y con **notificaciones push**. Cada persona tiene su cuenta y solo ve sus datos. Toda la
+interfaz está en español.
 
-Stack: Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Prisma 6 + PostgreSQL (Neon) ·
-date-fns(-tz) · web-push · Resend · Vercel.
+- **Hoy**: saludo, tareas vencidas (reprogramar a hoy o mañana), tareas, hábitos y eventos
+  del día, barra de progreso y el objetivo «foco».
+- **Tareas**: fecha, hora, prioridad, proyecto, objetivo, subtareas, recordatorio (a una
+  hora o X minutos antes), repetición (diaria, días concretos, semanal, mensual), bandeja de
+  entrada y captura rápida con el botón «+».
+- **Hábitos**: días de la semana, recordatorio, rachas y cuadrícula de las últimas semanas.
+- **Calendario**: vistas mensual, semanal y diaria; eventos con recordatorio.
+- **Objetivos**: numéricos (con gráfica de evolución), por hitos o por tareas vinculadas.
+- **Estadísticas** (7 y 30 días) y **revisión semanal** guiada con historial.
+- **Avisos**: tareas, eventos, hábitos, resumen de la mañana, repaso de la noche, tareas
+  atrasadas y revisión semanal, con horario de «no molestar».
+- **Mi cuenta** (exportar/eliminar), recuperar contraseña, panel de administración y
+  página de privacidad.
 
-> Este README se completará en la fase 7 (claves VAPID, cron-job.org, instalación en iPhone…).
+**Stack**: Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Prisma 6 + PostgreSQL
+(Supabase) · date-fns + date-fns-tz · web-push (VAPID) · Resend · Vercel (o Render).
 
-## Desarrollo local
+---
+
+## Índice
+
+1. [Puesta en marcha en 10 minutos](#1-puesta-en-marcha-en-10-minutos)
+2. [Variables de entorno](#2-variables-de-entorno)
+3. [Claves VAPID y CRON_SECRET](#3-claves-vapid-y-cron_secret)
+4. [Base de datos (Supabase)](#4-base-de-datos-supabase)
+5. [Despliegue en Vercel](#5-despliegue-en-vercel)
+6. [Despliegue en Render (alternativa)](#6-despliegue-en-render-alternativa)
+7. [Programar los avisos con cron-job.org](#7-programar-los-avisos-con-cron-joborg)
+8. [Emails con Resend](#8-emails-con-resend)
+9. [Instalar en el iPhone y activar las notificaciones](#9-instalar-en-el-iphone-y-activar-las-notificaciones)
+10. [Administración](#10-administración)
+11. [Seguridad](#11-seguridad)
+12. [Tests](#12-tests)
+13. [Desarrollo local](#13-desarrollo-local)
+14. [Cómo funciona por dentro](#14-cómo-funciona-por-dentro)
+15. [Solución de problemas](#15-solución-de-problemas)
+
+---
+
+## 1. Puesta en marcha en 10 minutos
+
+1. Crea un proyecto en **Supabase** y copia la URL del *Transaction pooler* ([§4](#4-base-de-datos-supabase)).
+2. Genera las claves: `npm install && npm run secrets` ([§3](#3-claves-vapid-y-cron_secret)).
+3. Importa el repositorio en **Vercel** y añade las variables ([§2](#2-variables-de-entorno), [§5](#5-despliegue-en-vercel)).
+4. Abre `https://TU-APP.vercel.app/api/salud` → debe decir `"ok": true`.
+5. Crea en **cron-job.org** una llamada cada minuto a `/api/cron/tick?key=…` ([§7](#7-programar-los-avisos-con-cron-joborg)).
+6. Instálala en el iPhone y activa las notificaciones ([§9](#9-instalar-en-el-iphone-y-activar-las-notificaciones)).
+7. (Opcional) Configura Resend para recuperar contraseñas ([§8](#8-emails-con-resend)).
+
+## 2. Variables de entorno
+
+Plantilla en [`.env.example`](.env.example). En Vercel: **Settings → Environment Variables**,
+marca **Production, Preview y Development** y vuelve a desplegar después de cambiarlas.
+
+| Variable | Obligatoria | Para qué | Ejemplo |
+|---|---|---|---|
+| `DATABASE_URL` | **Sí** | PostgreSQL. En Supabase, la URL del *Transaction pooler* (puerto 6543). | `postgresql://postgres.abcd:CLAVE@aws-0-eu-central-1.pooler.supabase.com:6543/postgres` |
+| `DIRECT_URL` | No | Conexión para las migraciones. Si falta, se usa el mismo pooler en modo sesión (puerto 5432). | `…pooler.supabase.com:5432/postgres` |
+| `APP_URL` | **Sí** | URL pública, sin barra final. Se usa en los enlaces de los emails. | `https://antola-ak.vercel.app` |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Para avisos | Clave pública VAPID ([§3](#3-claves-vapid-y-cron_secret)). | `BKx…` |
+| `VAPID_PRIVATE_KEY` | Para avisos | Clave privada VAPID. **Secreta.** | `x3…` |
+| `VAPID_SUBJECT` | Para avisos | Contacto para los servicios push: `mailto:` + tu email. | `mailto:tu@email.com` |
+| `CRON_SECRET` | Para avisos | Clave del endpoint del cron. **Secreta.** | `9f2c…` (48 caracteres) |
+| `ADMIN_EMAIL` | No | Email de la única cuenta con acceso a `/admin`. | `tu@email.com` |
+| `ALLOW_SIGNUP` | No | `true` (por defecto): registro abierto. `false`: cerrado. | `true` |
+| `RESEND_API_KEY` | Para emails | API key de Resend ([§8](#8-emails-con-resend)). **Secreta.** | `re_…` |
+| `EMAIL_FROM` | Para emails | Remitente, con un dominio verificado en Resend. | `Antola <no-reply@tudominio.com>` |
+
+Sin las variables de avisos la app funciona igual, pero no envía notificaciones; sin las de
+email, «He olvidado mi contraseña» no llega a enviar el correo.
+
+## 3. Claves VAPID y CRON_SECRET
+
+Las claves VAPID identifican a tu servidor ante los servicios push (Apple, Google, Mozilla).
 
 ```bash
-cp .env.example .env      # y rellena DATABASE_URL / DIRECT_URL
 npm install
-npx prisma migrate dev    # crea las tablas
-npm run dev
+npm run secrets
 ```
 
-## Despliegue en Vercel
+Imprime las cuatro líneas listas para pegar:
 
-1. **Base de datos (Supabase)**: en tu proyecto → **Connect** → pestaña *Connection String* →
-   **Transaction pooler** (host `aws-0-<región>.pooler.supabase.com`, puerto **6543**).
-   Copia esa URL y cambia `[YOUR-PASSWORD]` por la contraseña de la base de datos.
-   - No uses la *Direct connection* (`db.xxxx.supabase.co`): es solo IPv6 y Vercel no llega.
-   - Si la contraseña tiene símbolos (`@ # / ? :`), cámbiala por una solo con letras y números
-     en *Project Settings → Database → Reset database password*.
-2. **Vercel → Add New → Project** e importa este repositorio. Framework **Next.js** y el resto
-   por defecto (Build Command `npm run build`, sin *Override*).
-3. **Environment Variables** (Production): `DATABASE_URL` con la URL del paso 1 y el resto de
-   `.env.example`. `DIRECT_URL` es opcional.
-4. **Deploy**. Después abre `https://TU-APP.vercel.app/api/salud`: debe decir `"ok": true`.
-   Si no, indica el problema (sin mostrar contraseñas).
+```
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=…
+VAPID_PRIVATE_KEY=…
+VAPID_SUBJECT=mailto:tu-email@ejemplo.com   ← pon tu email
+CRON_SECRET=…
+```
 
-Cómo funciona la base de datos en el despliegue (`scripts/build.mjs` y `lib/migrate.ts`):
-- El build intenta `prisma migrate deploy`, pero **nunca falla por la base de datos**.
-- Al arrancar, la app aplica sola las migraciones pendientes (compatibles con Prisma).
-- En runtime se usa el pooler con `pgbouncer=true` y `connection_limit=1`; las migraciones
-  van por el modo sesión (puerto 5432) del mismo pooler.
+También vale `npx web-push generate-vapid-keys` para las VAPID y
+`openssl rand -hex 24` para el `CRON_SECRET`.
 
-### Notificaciones push y cron
+> ⚠️ **No cambies las claves VAPID una vez en uso**: todas las suscripciones dejarían de
+> funcionar y cada persona tendría que volver a activar las notificaciones.
 
-1. Genera las claves: `npm run secrets`. Imprime `NEXT_PUBLIC_VAPID_PUBLIC_KEY`,
-   `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (pon tu email tras `mailto:`) y un `CRON_SECRET`.
-   Añádelas en Vercel → Settings → Environment Variables y vuelve a desplegar.
-   **No cambies las claves VAPID después**: todos los dispositivos tendrían que volver a activarlas.
-2. En [cron-job.org](https://cron-job.org) crea un cronjob:
-   - URL: `https://TU-APP.vercel.app/api/cron/tick?key=TU_CRON_SECRET`
-   - Ejecución: **cada minuto**. Método GET.
-   La respuesta es un JSON con lo enviado (`enviados`, `fallidos`, `esperandoNoMolestar`…).
-3. En el iPhone: abre la web en Safari → Compartir → **Añadir a pantalla de inicio**, abre
-   Antola desde el icono → **Menú → Ajustes → Activar notificaciones** → *Enviar notificación de prueba*.
+## 4. Base de datos (Supabase)
 
-Cómo funciona el programador (`lib/notifications/tick.ts`):
-- Cada tarea, evento, hábito y resumen guarda su próximo disparo en UTC (`remindAt`,
-  `nextReminderAt`, `Settings.next*At`); cada llamada busca todo lo que vence ya, en bloque.
-- Cada aviso se reserva en `NotificationLog` con una clave única por usuario
-  (`task:<id>:<hora>`, `morning:<día>`…): nunca se envía dos veces aunque el cron se repita.
-- Lo que cae en "no molestar" se envía al terminar ese horario; lo que llega más de 2 h
-  tarde se descarta. Las suscripciones que responden 404/410 se borran.
+1. Crea un proyecto en [supabase.com](https://supabase.com). Usa una contraseña **solo con
+   letras y números** (los símbolos `@ # / ? :` rompen la URL).
+2. Pulsa **Connect** (arriba) → pestaña *Connection String* → **Transaction pooler**.
+3. Copia la URL y sustituye `[YOUR-PASSWORD]` por la contraseña (sin corchetes). Debe tener:
+   - host `aws-0-<región>.pooler.supabase.com`, puerto **6543**;
+   - usuario `postgres.<ref-del-proyecto>` (no solo `postgres`).
+4. Úsala como `DATABASE_URL`.
 
-### Emails (recuperar contraseña) y administración
+**No uses la *Direct connection*** (`db.<ref>.supabase.co`): solo funciona por IPv6 y
+Vercel no puede conectarse. Las tablas se crean solas (ver [§14](#14-cómo-funciona-por-dentro)).
 
-- **Resend**: crea una cuenta en [resend.com](https://resend.com), verifica tu dominio
-  (Domains → Add domain) y crea una API key. En Vercel define `RESEND_API_KEY` y
-  `EMAIL_FROM` (p. ej. `Antola <no-reply@tudominio.com>`, con el dominio verificado).
-  Sin dominio propio, Resend solo deja enviar a tu propio email desde `onboarding@resend.dev`.
-- Los enlaces para restablecer la contraseña caducan en 1 hora, son de un solo uso y
-  cierran la sesión en todos los dispositivos.
-- **Admin**: `ADMIN_EMAIL` es la única cuenta que ve *Menú → Administración* (`/admin`):
-  número de usuarios, fecha de registro, última actividad y desactivar/reactivar cuentas.
-  No puede ver tareas ni ningún otro contenido. Para el resto, `/admin` responde 404.
+También funciona con cualquier PostgreSQL 14+ (Neon, Render, local…).
 
-### Scripts de instalación (npm 11+/12)
+## 5. Despliegue en Vercel
 
-Las versiones recientes de npm bloquean por defecto los scripts de instalación de las
-dependencias. Los que necesita la app (Prisma, esbuild…) están autorizados en el campo
-`allowScripts` de `package.json`. Si añades una dependencia que los necesite:
+1. **Vercel → Add New → Project** e importa este repositorio.
+2. Framework **Next.js**. Deja *Build Command*, *Install Command* y *Output* por defecto
+   (el build usa `npm run build`).
+3. Añade las variables de [§2](#2-variables-de-entorno) (Production, Preview y Development).
+4. **Deploy**.
+5. Abre `https://TU-APP.vercel.app/api/salud`:
+   - `{"ok":true,…}` → todo bien.
+   - Si no, el JSON dice qué falla (`paso`: configuración, conexión, migraciones o tablas) y
+     cómo arreglarlo, sin mostrar contraseñas.
+
+Cada `git push` vuelve a desplegar. Si cambias variables, ve a **Deployments → ⋯ → Redeploy**.
+
+## 6. Despliegue en Render (alternativa)
+
+1. **New → Web Service** y conecta el repositorio.
+2. Runtime **Node**, *Build Command*: `npm install && npm run build`,
+   *Start Command*: `npm run start`.
+3. Añade las variables de [§2](#2-variables-de-entorno) (`APP_URL` = la URL `.onrender.com`).
+4. En Render el build ejecuta **`prisma migrate deploy`** automáticamente (detecta la variable
+   `RENDER`). Si falla, la app vuelve a intentarlo al arrancar.
+
+El plan gratuito de Render duerme el servidor: por eso los avisos no usan temporizadores
+internos, sino el cron externo de [§7](#7-programar-los-avisos-con-cron-joborg), que además lo despierta.
+
+## 7. Programar los avisos con cron-job.org
+
+1. Crea una cuenta gratuita en [cron-job.org](https://cron-job.org) → **Create cronjob**.
+2. **URL**: `https://TU-APP.vercel.app/api/cron/tick?key=TU_CRON_SECRET`
+3. **Execution schedule**: *Every minute*.
+4. En *Advanced*: método **GET**, *Timeout* 30 s. Guarda.
+5. Pulsa **Test run**. Debe responder `200` con un JSON como:
+
+```json
+{"ok":true,"ms":42,"clavesVapid":true,"pendientes":{"tareas":0,"eventos":0,"habitos":0,"ajustes":1},
+ "avisos":1,"enviados":1,"fallidos":0,"sinDispositivo":0,"duplicados":0,"esperandoNoMolestar":0,
+ "descartados":0,"dispositivosBorrados":0}
+```
+
+- `401 Clave incorrecta` → la `key` no coincide con `CRON_SECRET`.
+- `"clavesVapid": false` → faltan las variables VAPID.
+
+Si un minuto se salta o se repite no pasa nada: cada llamada recoge lo pendiente y nunca
+envía dos veces el mismo aviso. Con Vercel también se puede usar *Vercel Cron* (envía
+`Authorization: Bearer CRON_SECRET`), pero el plan gratuito solo permite una ejecución al día.
+
+## 8. Emails con Resend
+
+1. Crea una cuenta en [resend.com](https://resend.com).
+2. **Domains → Add domain** y añade los registros DNS que te indique hasta que aparezca
+   *Verified*. (Sin dominio propio, Resend solo deja enviar desde `onboarding@resend.dev` y
+   solo a tu propio email: sirve para probar.)
+3. **API Keys → Create API key** → cópiala en `RESEND_API_KEY`.
+4. `EMAIL_FROM` = `Antola <no-reply@tudominio.com>` (con el dominio verificado).
+
+El email de recuperación lleva un enlace que **caduca en 1 hora** y **solo sirve una vez**.
+
+## 9. Instalar en el iPhone y activar las notificaciones
+
+Necesitas **iOS 16.4 o posterior**. En el iPhone las notificaciones web solo funcionan con
+la app instalada en la pantalla de inicio.
+
+1. Abre la URL de la app en **Safari** (no en Chrome ni en otra app).
+2. Pulsa **Compartir** (el cuadrado con la flecha hacia arriba) → **Añadir a pantalla de inicio** → **Añadir**.
+3. Abre **Antola desde el icono** de la pantalla de inicio e inicia sesión.
+4. Ve a **Menú (☰) → Ajustes → Activar notificaciones** y pulsa **Permitir**.
+5. Pulsa **Enviar notificación de prueba**: debería llegarte en unos segundos.
+6. En **Ajustes** elige qué avisos quieres, sus horas y el horario de «no molestar».
+
+Si no llegan:
+- Ajustes del iPhone → **Notificaciones → Antola**: que estén permitidas.
+- Que el modo **Concentración / No molestar** del iPhone no las silencie.
+- Si cambiaste las claves VAPID o reinstalaste la app: Ajustes de Antola →
+  *Desactivar en este dispositivo* → *Activar notificaciones* otra vez.
+
+Al tocar una notificación se abre la tarea o el evento con botones rápidos:
+**Hecho**, **Posponer 15 min**, **Posponer 1 h** y **Mañana** (iOS no admite botones dentro
+de las notificaciones web). El número del icono muestra las tareas pendientes de hoy.
+
+## 10. Administración
+
+La cuenta cuyo email coincide con `ADMIN_EMAIL` ve **Menú → Administración** (`/admin`):
+
+- número de usuarios, activos en los últimos 7 días y desactivados;
+- lista con email, fecha de registro y última actividad, con buscador;
+- **desactivar / reactivar** cuentas (desactivar cierra todas sus sesiones al momento).
+
+El administrador **no puede ver tareas, hábitos, eventos ni ningún otro contenido**. Para
+cualquier otra cuenta, `/admin` responde 404.
+
+## 11. Seguridad
+
+**Aislamiento de datos**
+- Todas las tablas de contenido tienen `userId` con índice y borrado en cascada.
+- El `userId` sale **siempre de la sesión del servidor** (`withUser` en `lib/api.ts`), nunca
+  del cliente.
+- Toda lectura filtra por `userId`; toda edición o borrado comprueba que el registro es del
+  usuario y responde **404** si no (no se distingue entre «no existe» y «es de otro»).
+- Los ids que llegan en el cuerpo (proyecto, objetivo…) también se validan
+  (`lib/data/ownership.ts`).
+
+**Sesiones y acceso**
+- Contraseñas con bcrypt. Sesiones en la BD; en la cookie solo va un token aleatorio cuyo
+  SHA-256 es el id de la sesión. Cookie `httpOnly`, `Secure`, `SameSite=Lax`, 1 año.
+- Bloqueo temporal tras 5 fallos de login por email (o 20 por IP) en 15 minutos. Lo mismo al
+  pedir la contraseña actual (cambiar email/contraseña, borrar la cuenta).
+- Límite de registros por IP y de peticiones de recuperación de contraseña.
+- Recuperar contraseña no revela si un email existe; enlaces de un solo uso, 1 hora.
+- Cambiar la contraseña cierra las demás sesiones; restablecerla, todas.
+- Al cerrar sesión se borra la suscripción push de ese dispositivo.
+
+**Peticiones**
+- Protección CSRF: las peticiones que modifican datos deben venir del propio origen.
+- Cabeceras: CSP estricta (solo recursos propios), HSTS, `X-Frame-Options: DENY`,
+  `nosniff`, `Referrer-Policy`.
+- El servidor solo envía avisos a servicios push reales (Apple, Google, Mozilla, Microsoft):
+  no acepta suscripciones a URLs arbitrarias.
+- Rutas públicas: login, registro, recuperar contraseña, privacidad, manifest, iconos,
+  service worker, `/api/cron/tick` (con su clave) y `/api/salud` (sin datos de usuarios).
+- El service worker **no cachea** páginas ni respuestas de la API (datos privados).
+
+## 12. Tests
 
 ```bash
-npm install-scripts ls        # ver cuáles están bloqueados
-npm install-scripts approve <paquete> --no-allow-scripts-pin
+npm test                 # unitarios: fechas, recurrencia, horarios, "no molestar", gráficas…
+npm run test:security    # aislamiento entre usuarios, contra un servidor en marcha
 ```
+
+**Pruebas de aislamiento** (`tests/security/`): crean un usuario A con un dato de cada tipo y
+un usuario B que ataca **todos los endpoints** con los ids de A (leer, editar, borrar,
+completar, posponer, reprogramar, vincular a proyectos u objetivos ajenos, el panel de
+admin…). Comprueban que B recibe 404, que ninguna respuesta contiene datos de A y que la
+exportación completa de A queda **idéntica**. También prueban el acceso sin sesión, cookies
+inventadas, CSRF, SSRF, el bloqueo de login y que la exportación no incluye secretos.
+
+`tests/unit/route-coverage.test.ts` (parte de `npm test`) falla si se añade un endpoint que
+no esté en la matriz de ataques (`tests/security/matrix.ts`) o que no use `withUser`.
+
+Para ejecutarlas:
+
+```bash
+npm run build && npm run start         # con una base de datos de PRUEBAS
+TEST_BASE_URL=http://localhost:3000 npm run test:security
+```
+
+> Crean dos usuarios de prueba (`…@aislamiento.test`) y los borran al terminar. Aun así,
+> lánzalas contra una base de datos de pruebas, no contra producción.
+
+## 13. Desarrollo local
+
+Requisitos: Node 24 y PostgreSQL.
+
+```bash
+cp .env.example .env     # DATABASE_URL de tu PostgreSQL local, CRON_SECRET, claves VAPID…
+npm install
+npx prisma migrate dev   # crea las tablas
+npm run dev              # http://localhost:3000
+```
+
+Sin `RESEND_API_KEY`, en desarrollo el enlace de recuperación de contraseña se muestra en la
+consola del servidor. Para probar los avisos: `curl "localhost:3000/api/cron/tick?key=TU_CRON_SECRET"`.
+
+Scripts útiles:
+
+| Script | Qué hace |
+|---|---|
+| `npm run dev` | Servidor de desarrollo |
+| `npm run build` / `npm start` | Compilar (aplica migraciones si puede) y arrancar |
+| `npm run typecheck` | Tipos de rutas + TypeScript |
+| `npm test` / `npm run test:security` | Tests (ver [§12](#12-tests)) |
+| `npm run secrets` | Genera claves VAPID y `CRON_SECRET` |
+| `npm run icons` | Regenera los iconos de la PWA |
+| `npm run db:migrate` | Nueva migración de Prisma (desarrollo) |
+
+**npm 11+/12** bloquea los scripts de instalación de las dependencias. Los necesarios
+(Prisma, esbuild…) están autorizados en `allowScripts` de `package.json`. Si añades una
+dependencia que los necesite: `npm install-scripts approve <paquete> --no-allow-scripts-pin`.
+
+## 14. Cómo funciona por dentro
+
+```
+app/(auth)/        login, registro, recuperar, restablecer, privacidad (públicas)
+app/(app)/         pantallas de la app (exigen sesión y haber completado la bienvenida)
+app/api/           endpoints (withUser / withPublic en lib/api.ts)
+lib/data/          consultas a la BD, siempre filtradas por userId
+lib/notifications/ programador de avisos (timing, textos, envío, tick)
+lib/auth/          sesiones, contraseñas, límites de intentos, recuperación, admin
+proxy.ts           redirige al login si no hay cookie (la sesión se valida en el servidor)
+public/sw.js       service worker: push, clic en notificación, caché de estáticos
+prisma/            esquema y migraciones
+tests/             unitarios y de seguridad
+```
+
+**Fechas**: los instantes se guardan en UTC; los días de calendario como `date`
+(`YYYY-MM-DD`); las horas del día como minutos desde medianoche en la zona del usuario.
+Todo se muestra en la zona horaria de cada usuario (Ajustes). Al cambiarla, las tareas y
+hábitos conservan su hora local.
+
+**Migraciones**: el build intenta `prisma migrate deploy` (en Vercel/Render) pero nunca falla
+por la base de datos. Al arrancar, la app aplica sola las migraciones pendientes
+(`lib/migrate.ts`, compatible con la tabla `_prisma_migrations`), con un bloqueo para que dos
+instancias no migren a la vez.
+
+**Avisos** (`lib/notifications/tick.ts`): cada tarea, evento, hábito y resumen guarda su
+próximo disparo en UTC (`Task.remindAt`, `Event.remindAt`, `Habit.nextReminderAt`,
+`Settings.next*At`). Cada llamada al cron:
+1. busca en bloque todo lo que vence ya, de todos los usuarios activos (sin N+1);
+2. aplica «no molestar» (se envía al terminar) y descarta lo de hace más de 2 horas;
+3. reserva cada aviso en `NotificationLog` con una clave única por usuario
+   (`task:<id>:<hora>`, `morning:<día>`…), así que nunca se repite;
+4. envía en lotes con `Promise.allSettled` (un fallo no para al resto), borra las
+   suscripciones que responden 404/410 y programa el siguiente disparo;
+5. cada hora limpia registros viejos, sesiones caducadas y enlaces usados.
+
+## 15. Solución de problemas
+
+| Síntoma | Causa probable | Solución |
+|---|---|---|
+| «Error interno» al entrar o registrarse | La app no llega a la base de datos | Abre `/api/salud` y sigue lo que indique |
+| `/api/salud` → `"paso":"configuracion"`, `variablesDeBaseDeDatos: []` | Falta `DATABASE_URL` en ese entorno | Añádela en Vercel marcando Production, Preview y Development → Redeploy |
+| `/api/salud` → `paso: "conexion"` | URL o contraseña incorrecta, o *Direct connection* | Usa el *Transaction pooler* (6543) con usuario `postgres.<ref>` |
+| «prepared statement already exists» | Pooler sin `pgbouncer=true` | La app lo añade sola; comprueba que usas el puerto 6543 |
+| No aparece «Activar notificaciones» | La app no está instalada | Ábrela desde el icono de la pantalla de inicio |
+| La prueba dice «Ningún dispositivo…» | No hay suscripción guardada | Ajustes → Activar notificaciones |
+| El cron responde `401` | `key` distinta de `CRON_SECRET` | Copia de nuevo la clave en cron-job.org |
+| No llega el email de recuperación | Falta Resend o el dominio no está verificado | [§8](#8-emails-con-resend); mira también el spam |
+| «Demasiados intentos» | Bloqueo por fallos de login | Espera 15 minutos o recupera la contraseña |

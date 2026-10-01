@@ -45,6 +45,8 @@ export async function parseBody<T extends z.ZodType>(req: Request, schema: T): P
  */
 function checkSameOrigin(req: NextRequest) {
   if (req.method === "GET" || req.method === "HEAD") return;
+  // Los navegadores modernos marcan las peticiones hechas desde otra web.
+  if (req.headers.get("sec-fetch-site") === "cross-site") throw new HttpError(403, "Origen no permitido");
   const origin = req.headers.get("origin");
   if (!origin) return;
   const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");

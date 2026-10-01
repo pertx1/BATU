@@ -44,6 +44,8 @@ export async function GET() {
   const tables = await step("tablas", () => db.$queryRawUnsafe(`SELECT 1 FROM "User" LIMIT 1`));
 
   const ok = mig.ok && tables.ok;
+  // Todo bien: no hace falta enseñar detalles de la configuración.
+  if (ok) return NextResponse.json({ ok: true, conexion: "ok", tablas: "ok" });
   return NextResponse.json(
     {
       ok,

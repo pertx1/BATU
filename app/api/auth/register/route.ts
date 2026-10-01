@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { HttpError, parseBody, withPublic } from "@/lib/api";
 import { hashPassword } from "@/lib/auth/password";
+import { clientIp } from "@/lib/auth/rate-limit";
 import { createSession } from "@/lib/auth/session";
 import { allowSignup } from "@/lib/env";
 import { emailSchema, isValidTimeZone, passwordSchema } from "@/lib/validation";
@@ -19,6 +20,17 @@ export const POST = withPublic(async (req) => {
 
   if (!allowSignup()) {
     throw new HttpError(403, "El registro está cerrado");
+  }
+
+  // Máximo 10 registros por IP y hora (frena la creación masiva de cuentas
+  // y que se use el registro para averiguar qué emails existen).
+  const ip = clientIp(req.headers);
+  if (ip) {
+    const recent = await db.loginAttempt.count({
+      where: { ip, email: { startsWith: "register:" }, createdAt: { gt: new Date(Date.now() - 3600_000) } },
+    });
+    if (recent >= 10) throw new HttpError(429, "Demasiados registros desde esta conexión. Prueba más tarde.");
+    await db.loginAttempt.create({ data: { email: `register:${body.email}`, ip, success: true } });
   }
 
   const existing = await db.user.findUnique({ where: { email: body.email }, select: { id: true } });

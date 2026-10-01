@@ -13,7 +13,8 @@ try {
 }
 
 const env = { ...process.env };
-const onVercel = env.VERCEL === "1" || env.MIGRATE_ON_BUILD === "1";
+// En Vercel y Render (y si se pide con MIGRATE_ON_BUILD=1) el build aplica las migraciones.
+const onVercel = env.VERCEL === "1" || env.RENDER === "true" || env.MIGRATE_ON_BUILD === "1";
 const resolved = resolveDatabaseUrls(env);
 const problems = diagnoseEnv(env);
 if (problems.length) {

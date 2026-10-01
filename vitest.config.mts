@@ -10,6 +10,8 @@ export default defineConfig({
   },
   test: {
     include: ["tests/**/*.test.ts"],
+    // Las de seguridad necesitan un servidor en marcha: npm run test:security
+    exclude: ["tests/security/**", "node_modules/**"],
     environment: "node",
     fileParallelism: false,
     testTimeout: 20000,

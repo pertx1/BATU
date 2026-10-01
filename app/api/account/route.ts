@@ -32,7 +32,9 @@ export const DELETE = withUser(async (req, { userId }) => {
   await db.$transaction([
     db.user.delete({ where: { id: userId } }),
     // Los intentos de login no cuelgan del usuario (se guardan por email).
-    db.loginAttempt.deleteMany({ where: { email: { in: [user.email, `reset:${user.email}`] } } }),
+    db.loginAttempt.deleteMany({
+      where: { email: { in: [user.email, `reset:${user.email}`, `register:${user.email}`] } },
+    }),
   ]);
   (await cookies()).delete(SESSION_COOKIE);
   return NextResponse.json({ ok: true });
