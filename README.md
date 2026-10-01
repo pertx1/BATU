@@ -23,13 +23,13 @@ npm run dev
    con *Connection pooling* activado (`DATABASE_URL`, el host lleva `-pooler`) y desactivado (`DIRECT_URL`).
 2. **Vercel → Add New → Project** e importa este repositorio.
    - Framework Preset: **Next.js**
-   - Build Command (activa *Override*): `npm run vercel-build`
-     (ejecuta `scripts/vercel-build.mjs`: `prisma generate`, `prisma migrate deploy` y `next build`)
+   - Build Command: por defecto (`npm run build`) o `npm run vercel-build`; son lo mismo.
+     `scripts/build.mjs` ejecuta `prisma generate`, `prisma migrate deploy` (solo en Vercel) y `next build`
    - Install Command y Output Directory: por defecto
 3. **Environment Variables**: añade todas las de `.env.example` (marca solo *Production*).
 4. **Deploy**. Después ajusta `APP_URL` a la URL definitiva y vuelve a desplegar.
 5. `DIRECT_URL` es opcional en Vercel: si falta se usa `DATABASE_URL_UNPOOLED`
-   (la crea la integración de Neon) o `DATABASE_URL`.
+   (la crea la integración de Neon) o se deduce de `DATABASE_URL` quitando `-pooler` del host.
 6. Si trabajas en una rama distinta de `main`, cámbiala en
    *Settings → Environments → Production → Branch Tracking*.
 
