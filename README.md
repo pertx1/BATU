@@ -24,9 +24,22 @@ npm run dev
 2. **Vercel → Add New → Project** e importa este repositorio.
    - Framework Preset: **Next.js**
    - Build Command (activa *Override*): `npm run vercel-build`
-     (ejecuta `prisma generate && prisma migrate deploy && next build`)
+     (ejecuta `scripts/vercel-build.mjs`: `prisma generate`, `prisma migrate deploy` y `next build`)
    - Install Command y Output Directory: por defecto
 3. **Environment Variables**: añade todas las de `.env.example` (marca solo *Production*).
 4. **Deploy**. Después ajusta `APP_URL` a la URL definitiva y vuelve a desplegar.
-5. Si trabajas en una rama distinta de `main`, cámbiala en
+5. `DIRECT_URL` es opcional en Vercel: si falta se usa `DATABASE_URL_UNPOOLED`
+   (la crea la integración de Neon) o `DATABASE_URL`.
+6. Si trabajas en una rama distinta de `main`, cámbiala en
    *Settings → Environments → Production → Branch Tracking*.
+
+### Scripts de instalación (npm 11+/12)
+
+Las versiones recientes de npm bloquean por defecto los scripts de instalación de las
+dependencias. Los que necesita la app (Prisma, esbuild…) están autorizados en el campo
+`allowScripts` de `package.json`. Si añades una dependencia que los necesite:
+
+```bash
+npm install-scripts ls        # ver cuáles están bloqueados
+npm install-scripts approve <paquete> --no-allow-scripts-pin
+```
