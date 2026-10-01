@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { resolveDatabaseUrls } from "@/lib/db-url.mjs";
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
@@ -8,7 +9,7 @@ const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
  * estaba suspendida (plan gratuito).
  */
 function databaseUrl(): string | undefined {
-  const raw = process.env.DATABASE_URL;
+  const raw = resolveDatabaseUrls(process.env)?.url;
   if (!raw) return undefined;
   try {
     const url = new URL(raw);
