@@ -57,3 +57,25 @@ export const PROJECT_COLORS = [
   "#8e5cd9",
   "#7a7a8c",
 ];
+
+export type EventView = {
+  id: string;
+  title: string;
+  allDay: boolean;
+  startDate: DateStr;
+  endDate: DateStr;
+  start: number | null; // minutos locales
+  end: number | null;
+  location: string | null;
+  notes: string | null;
+  project: ProjectView | null;
+  reminderMinutesBefore: number | null;
+};
+
+export const EVENT_REMINDER_OPTIONS: { value: number; label: string }[] = [
+  { value: 5, label: "5 min antes" },
+  { value: 15, label: "15 min antes" },
+  { value: 30, label: "30 min antes" },
+  { value: 60, label: "1 hora antes" },
+  { value: 1440, label: "1 día antes" },
+];

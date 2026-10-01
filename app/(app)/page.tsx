@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { CalendarDays, ChevronRight, Menu, Plus, Target } from "lucide-react";
+import { ChevronRight, Menu, Plus, Target } from "lucide-react";
 import { requireOnboardedUser } from "@/lib/auth/session";
-import { capitalize, formatTz, greeting, minutesToHHMM, todayStr } from "@/lib/dates";
+import { capitalize, formatTz, greeting, todayStr } from "@/lib/dates";
 import { getTodayData } from "@/lib/data/today";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { HabitRow } from "@/components/habits/habit-card";
@@ -10,6 +10,7 @@ import { OverdueList } from "@/components/today/overdue-list";
 import { ProgressCard } from "@/components/today/progress-card";
 import { SectionTitle } from "@/components/ui/controls";
 import { BadgeSync } from "@/components/today/badge-sync";
+import { EventRow } from "@/components/calendar/event-row";
 
 export default async function TodayPage() {
   const user = await requireOnboardedUser();
@@ -77,21 +78,7 @@ export default async function TodayPage() {
             <ul className="card divide-y divide-line overflow-hidden">
               {data.events.map((e) => (
                 <li key={e.id}>
-                  <Link href={`/calendario/evento/${e.id}`} className="flex items-center gap-3 px-4 py-3 active:bg-surface-2">
-                    <span className="h-9 w-1 rounded-full" style={{ backgroundColor: e.color ?? "var(--accent)" }} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium">{e.title}</p>
-                      <p className="text-[13px] text-muted">
-                        {e.allDay
-                          ? "Todo el día"
-                          : [e.start != null ? minutesToHHMM(e.start) : null, e.end != null ? minutesToHHMM(e.end) : null]
-                              .filter(Boolean)
-                              .join(" – ") || "Continúa"}
-                        {e.location ? ` · ${e.location}` : ""}
-                      </p>
-                    </div>
-                    <CalendarDays size={18} className="text-muted" />
-                  </Link>
+                  <EventRow event={e} day={today} />
                 </li>
               ))}
             </ul>

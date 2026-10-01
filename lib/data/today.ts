@@ -1,19 +1,10 @@
 import "server-only";
 import { db } from "@/lib/db";
-import { dateStrToDb, type DateStr, localMinutes } from "@/lib/dates";
+import { dateStrToDb, type DateStr } from "@/lib/dates";
+import { toEventView } from "@/lib/data/calendar";
 import { goalProgress } from "@/lib/goals";
 import { listHabitViews } from "@/lib/data/habits";
 import { taskInclude, taskOrder, toTaskView } from "@/lib/data/tasks";
-
-export type TodayEvent = {
-  id: string;
-  title: string;
-  allDay: boolean;
-  start: number | null; // minutos locales
-  end: number | null;
-  location: string | null;
-  color: string | null;
-};
 
 export type FocusGoal = {
   id: string;
@@ -40,7 +31,7 @@ export async function getTodayData(userId: string, timeZone: string, today: Date
     listHabitViews(userId, timeZone, today),
     db.event.findMany({
       where: { userId, startDate: { lte: todayDb }, endDate: { gte: todayDb } },
-      include: { project: { select: { color: true } } },
+      include: { project: { select: { id: true, name: true, color: true, emoji: true } } },
       orderBy: [{ allDay: "desc" }, { startAt: "asc" }],
     }),
     db.goal.findFirst({
@@ -57,16 +48,7 @@ export async function getTodayData(userId: string, timeZone: string, today: Date
   tasks.sort((a, b) => Number(!!a.completedAt) - Number(!!b.completedAt));
   const habits = habitData.habits.filter((h) => h.scheduledToday || h.doneToday);
 
-  const events: TodayEvent[] = eventsRaw.map((e) => ({
-    id: e.id,
-    title: e.title,
-    allDay: e.allDay,
-    // Un evento de varios días muestra hora solo el día en que empieza o termina.
-    start: !e.allDay && e.startAt && dateStrToDb(today).getTime() === e.startDate.getTime() ? localMinutes(e.startAt, timeZone) : null,
-    end: !e.allDay && e.endAt && dateStrToDb(today).getTime() === e.endDate.getTime() ? localMinutes(e.endAt, timeZone) : null,
-    location: e.location,
-    color: e.project?.color ?? null,
-  }));
+  const events = eventsRaw.map((e) => toEventView(e, timeZone));
 
   let focus: FocusGoal | null = null;
   if (focusRaw) {

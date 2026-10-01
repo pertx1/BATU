@@ -26,8 +26,8 @@ export async function GET() {
   }
   try {
     await ensureMigrated();
-    const users = await db.user.count();
-    return NextResponse.json({ ok: true, baseDeDatos: "ok", tablas: "ok", usuarios: users, ...base });
+    await db.$queryRawUnsafe(`SELECT 1 FROM "User" LIMIT 1`);
+    return NextResponse.json({ ok: true, baseDeDatos: "ok", tablas: "ok", ...base });
   } catch (err) {
     const code =
       err instanceof Prisma.PrismaClientKnownRequestError
