@@ -14,14 +14,14 @@ export function Segmented<T extends string>({
   options: { value: T; label: string }[];
 }) {
   return (
-    <div className="flex rounded-xl bg-surface-2 p-1">
+    <div className="flex rounded-full bg-surface-2 p-1">
       {options.map((o) => (
         <button
           key={o.value}
           type="button"
           onClick={() => onChange(o.value)}
-          className={`min-h-10 flex-1 rounded-lg px-2 text-[15px] font-semibold transition ${
-            value === o.value ? "bg-surface text-fg shadow-sm" : "text-muted"
+          className={`min-h-10 flex-1 rounded-full px-2 text-[15px] font-semibold transition ${
+            value === o.value ? "bg-segment text-fg shadow-[0_3px_8px_rgb(0_0_0/0.12)]" : "text-muted"
           }`}
         >
           {o.label}
@@ -126,7 +126,7 @@ export function EmptyState({ icon, title, text }: { icon: React.ReactNode; title
 
 export function SectionTitle({ children, tone }: { children: React.ReactNode; tone?: "danger" }) {
   return (
-    <h2 className={`mb-2 mt-6 px-1 text-[13px] font-semibold uppercase tracking-wide ${tone === "danger" ? "text-danger" : "text-muted"}`}>
+    <h2 className={`mb-1.5 mt-7 px-4 text-[13px] uppercase ${tone === "danger" ? "font-semibold text-danger" : "text-muted"}`}>
       {children}
     </h2>
   );
@@ -153,7 +153,7 @@ export function Switch({
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={`relative h-[31px] w-[51px] shrink-0 rounded-full transition-colors duration-200 disabled:opacity-40 ${
-        checked ? "bg-success" : "bg-surface-2 ring-1 ring-line ring-inset"
+        checked ? "bg-switch" : "bg-surface-2"
       }`}
     >
       <span

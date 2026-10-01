@@ -23,7 +23,7 @@ export default async function ReviewDetailPage({ params }: PageProps<"/revision/
         subtitle={weekLabel(review.weekStart)}
         back="/revision"
         right={
-          <Link href={`/revision?semana=${review.weekStart}`} aria-label="Editar revisión" className="flex size-11 items-center justify-center rounded-full bg-surface-2 text-fg">
+          <Link href={`/revision?semana=${review.weekStart}`} aria-label="Editar revisión" className="glass flex size-11 items-center justify-center rounded-full text-fg">
             <Pencil size={20} />
           </Link>
         }

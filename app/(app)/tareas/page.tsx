@@ -60,7 +60,7 @@ export default async function TasksPage({ searchParams }: PageProps<"/tareas">) 
           <Link
             href={`/tareas/nueva${project ? `?project=${project.id}` : ""}`}
             aria-label="Nueva tarea"
-            className="flex size-11 items-center justify-center rounded-full bg-accent-soft text-accent"
+            className="glass flex size-11 items-center justify-center rounded-full text-fg"
           >
             <Plus size={24} />
           </Link>

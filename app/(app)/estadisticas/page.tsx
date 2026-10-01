@@ -32,14 +32,14 @@ export default async function StatsPage({ searchParams }: PageProps<"/estadistic
     <>
       <PageHeader title="Estadísticas" back="/menu" />
       <PageBody>
-        <nav className="mb-5 flex rounded-xl bg-surface-2 p-1" aria-label="Periodo">
+        <nav className="mb-5 flex rounded-full bg-surface-2 p-1" aria-label="Periodo">
           {([7, 30] as const).map((n) => (
             <Link
               key={n}
               href={n === 7 ? "/estadisticas" : "/estadisticas?p=30"}
               aria-current={n === days ? "page" : undefined}
-              className={`flex min-h-10 flex-1 items-center justify-center rounded-lg text-[15px] font-semibold transition ${
-                n === days ? "bg-surface text-fg shadow-sm" : "text-muted"
+              className={`flex min-h-10 flex-1 items-center justify-center rounded-full text-[15px] font-semibold transition ${
+                n === days ? "bg-segment text-fg shadow-[0_3px_8px_rgb(0_0_0/0.12)]" : "text-muted"
               }`}
             >
               Últimos {n} días

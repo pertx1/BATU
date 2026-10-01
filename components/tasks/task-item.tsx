@@ -138,7 +138,7 @@ export function TaskList({
   overdue?: boolean;
 }) {
   return (
-    <ul className={`card divide-y divide-line overflow-hidden ${overdue ? "border-danger/40" : ""}`}>
+    <ul className={`card divide-y divide-line overflow-hidden ${overdue ? "ring-1 ring-danger/40" : ""}`}>
       {tasks.map((t) => (
         <li key={t.id}>
           <TaskItem task={t} today={today} showDate={showDate} overdue={overdue} />

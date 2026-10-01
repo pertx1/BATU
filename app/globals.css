@@ -1,39 +1,54 @@
 @import "tailwindcss";
 
+/*
+ * Colores del sistema de Apple (iOS): fondos agrupados, etiquetas y tintes.
+ * Donde el color estándar no llega a 4.5:1 en texto pequeño se usa su variante
+ * de alto contraste (rojo, verde y naranja en modo claro; índigo en oscuro).
+ */
 :root {
-  --bg: #f6f6f9;
-  --surface: #ffffff;
-  --surface-2: #eeeef3;
-  --fg: #16161d;
-  --muted: #6b6b7b;
-  --line: #e3e3ea;
-  --accent: #5b4cf0;
+  --bg: #f2f2f7; /* systemGroupedBackground */
+  --surface: #ffffff; /* secondarySystemGroupedBackground */
+  --surface-2: #e5e5ea; /* systemGray5: campos, botones grises */
+  --segment: #ffffff; /* segmento seleccionado */
+  --fg: #000000; /* label */
+  --muted: #6c6c70; /* secondaryLabel (alto contraste): 5.2:1 */
+  --line: #dcdce1; /* separator */
+  --accent: #5856d6; /* systemIndigo: 5.7:1 con blanco */
   --accent-fg: #ffffff;
-  --accent-soft: #ecebff;
-  --danger: #e5484d;
-  --danger-soft: #fdecec;
-  --success: #2fa36b;
-  --success-soft: #e4f6ec;
-  --warning: #e09b16;
+  --accent-soft: #e9e9fa;
+  --danger: #d70015; /* systemRed alto contraste: 5.4:1 */
+  --danger-soft: #ffe5e7;
+  --success: #1e7b34; /* systemGreen alto contraste */
+  --success-fg: #ffffff;
+  --success-soft: #e3f5e8;
+  --warning: #b25000; /* systemOrange alto contraste */
+  --switch: #34c759; /* verde de los interruptores de iOS */
+  --glass: rgb(250 250 252 / 0.8);
+  --glass-border: rgb(255 255 255 / 0.6);
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0c0c11;
-    --surface: #17171f;
-    --surface-2: #22222c;
-    --fg: #f1f1f5;
-    --muted: #9a9aab;
-    --line: #2a2a35;
-    --accent: #8b7fff;
-    --accent-fg: #0c0c11;
-    --accent-soft: #25224a;
-    --danger: #ff6b6f;
-    --danger-soft: #3a1c1e;
-    --success: #4cc38a;
-    --success-soft: #16301f;
-    --warning: #f5b546;
+    --bg: #000000;
+    --surface: #1c1c1e;
+    --surface-2: #2c2c2e;
+    --segment: #636366;
+    --fg: #ffffff;
+    --muted: #98989f;
+    --line: #38383a;
+    --accent: #7d7aff; /* systemIndigo alto contraste: 4.9:1 */
+    --accent-fg: #ffffff;
+    --accent-soft: #24234a;
+    --danger: #ff453a;
+    --danger-soft: #3b1513;
+    --success: #30d158;
+    --success-fg: #000000;
+    --success-soft: #0f2e18;
+    --warning: #ff9f0a;
+    --switch: #30d158;
+    --glass: rgb(28 28 30 / 0.82);
+    --glass-border: rgb(255 255 255 / 0.12);
     color-scheme: dark;
   }
 }
@@ -51,11 +66,14 @@
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
   --color-success: var(--success);
+  --color-success-fg: var(--success-fg);
+  --color-segment: var(--segment);
+  --color-switch: var(--switch);
   --color-success-soft: var(--success-soft);
   --color-warning: var(--warning);
   --font-sans:
-    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial,
-    sans-serif;
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", system-ui, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
   --animate-pop: pop 260ms cubic-bezier(0.2, 0.9, 0.3, 1.4);
   --animate-fade-up: fade-up 220ms ease-out;
   --animate-sheet-up: sheet-up 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -84,36 +102,49 @@ body {
   overscroll-behavior-y: none;
 }
 
+/* Cuerpo de texto de iOS: 17 pt (Body). */
 body {
   font-family: var(--font-sans);
+  font-size: 17px;
+  line-height: 1.3;
 }
 
-/* iOS no hace zoom en inputs con font-size >= 16px */
+/* 17px como en iOS (y ≥ 16px: Safari no hace zoom al escribir) */
 input,
 select,
 textarea,
 button {
-  font-size: 16px;
+  font-size: 17px;
 }
 
 @layer components {
+  /* Sección agrupada de iOS: blanca sobre el gris del fondo, sin borde. */
   .card {
-    @apply rounded-2xl bg-surface border border-line;
+    @apply rounded-[20px] bg-surface;
   }
+  /* Campo relleno, como los de los formularios de iOS. */
   .input {
-    @apply w-full rounded-xl border border-line bg-surface px-4 py-3 text-base text-fg outline-none transition placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-accent/25;
+    @apply w-full rounded-xl border border-transparent bg-surface px-4 py-3 text-fg outline-none transition placeholder:text-muted focus:border-accent/60 focus:ring-4 focus:ring-accent/15;
+  }
+  .card .input {
+    @apply bg-bg;
   }
   .label {
-    @apply mb-1.5 block text-sm font-medium text-muted;
+    @apply mb-1.5 block px-1 text-[13px] uppercase text-muted;
   }
+  /* Botones en cápsula (iOS 26). 50 pt de alto, texto Body semibold. */
   .btn {
-    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 text-base font-semibold transition active:scale-[0.97] disabled:opacity-50 disabled:active:scale-100;
+    @apply inline-flex min-h-[50px] items-center justify-center gap-2 rounded-full px-5 font-semibold transition active:scale-[0.97] active:opacity-80 disabled:opacity-40 disabled:active:scale-100;
   }
   .btn-primary {
     @apply bg-accent text-accent-fg;
   }
+  /* Botón gris con el texto en el color de acento (estilo "bordered" de iOS). */
   .btn-secondary {
-    @apply bg-surface-2 text-fg;
+    @apply bg-surface-2 text-accent;
+  }
+  .card .btn-secondary {
+    @apply bg-bg;
   }
   .btn-danger {
     @apply bg-danger text-white;
@@ -121,11 +152,51 @@ button {
   .btn-ghost {
     @apply bg-transparent text-accent;
   }
+  /* Material tipo Liquid Glass: solo para la capa flotante (barra de pestañas, botones sobre el contenido). */
+  /* Efecto de borde de desplazamiento: el contenido se difumina al pasar bajo la barra. */
+  .scroll-edge-top {
+    background: linear-gradient(to bottom, var(--bg) 55%, transparent);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent);
+    mask-image: linear-gradient(to bottom, black 70%, transparent);
+  }
+  .glass {
+    background: var(--glass);
+    -webkit-backdrop-filter: blur(24px) saturate(1.6);
+    backdrop-filter: blur(24px) saturate(1.6);
+    border: 1px solid var(--glass-border);
+  }
   .pt-safe {
     padding-top: env(safe-area-inset-top);
   }
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Accesibilidad: sin transparencias si se piden, bordes más marcados con más contraste. */
+@media (prefers-reduced-transparency: reduce) {
+  .glass {
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+@media (prefers-contrast: more) {
+  .glass {
+    border-color: var(--muted);
+  }
+  .card {
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
   }
 }
 

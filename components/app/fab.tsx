@@ -45,8 +45,8 @@ export function Fab() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Captura rápida"
-        className="fixed right-5 z-40 flex size-14 items-center justify-center rounded-full bg-accent text-accent-fg shadow-lg shadow-accent/30 transition active:scale-90"
-        style={{ bottom: "calc(4rem + env(safe-area-inset-bottom) + 1rem)" }}
+        className="fixed right-5 z-40 flex size-14 items-center justify-center rounded-full bg-accent text-accent-fg shadow-[0_8px_24px_rgb(0_0_0/0.18)] transition active:scale-90"
+        style={{ bottom: "calc(max(env(safe-area-inset-bottom), 12px) + 62px + 14px)" }}
       >
         <Plus size={28} strokeWidth={2.5} />
       </button>

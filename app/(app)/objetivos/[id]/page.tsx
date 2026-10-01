@@ -44,7 +44,7 @@ export default async function GoalPage({ params }: PageProps<"/objetivos/[id]">)
         title="Objetivo"
         back="/objetivos"
         right={
-          <Link href={`/objetivos/${id}/editar`} aria-label="Editar objetivo" className="flex size-11 items-center justify-center rounded-full bg-surface-2 text-fg">
+          <Link href={`/objetivos/${id}/editar`} aria-label="Editar objetivo" className="glass flex size-11 items-center justify-center rounded-full text-fg">
             <Pencil size={20} />
           </Link>
         }

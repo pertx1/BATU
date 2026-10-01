@@ -4,7 +4,7 @@
  * - Push: muestra la notificación y abre la URL al tocarla.
  * - Si el navegador renueva la suscripción push, se vuelve a registrar sola.
  */
-const VERSION = "v3";
+const VERSION = "v4";
 const STATIC_CACHE = `antola-static-${VERSION}`;
 const PRECACHE = [
   "/offline.html",

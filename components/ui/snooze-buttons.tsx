@@ -26,13 +26,27 @@ export function SnoozeButtons({ path }: { path: string }) {
     }
   }
 
+  // Etiquetas cortas para que quepan en la cápsula; el nombre accesible es completo.
   return (
     <>
-      <button type="button" className="btn btn-secondary gap-1.5 whitespace-nowrap px-2 text-[15px]" disabled={busy} onClick={() => snooze(15)}>
-        <AlarmClock size={18} className="shrink-0" /> Posponer 15 min
+      <p className="col-span-2 mt-1 px-4 text-[13px] uppercase text-muted">Posponer el aviso</p>
+      <button
+        type="button"
+        className="btn btn-secondary gap-1.5 whitespace-nowrap px-3"
+        disabled={busy}
+        onClick={() => snooze(15)}
+        aria-label="Posponer 15 minutos"
+      >
+        <AlarmClock size={19} className="shrink-0" /> 15 min
       </button>
-      <button type="button" className="btn btn-secondary gap-1.5 whitespace-nowrap px-2 text-[15px]" disabled={busy} onClick={() => snooze(60)}>
-        <AlarmClock size={18} className="shrink-0" /> Posponer 1 h
+      <button
+        type="button"
+        className="btn btn-secondary gap-1.5 whitespace-nowrap px-3"
+        disabled={busy}
+        onClick={() => snooze(60)}
+        aria-label="Posponer 1 hora"
+      >
+        <AlarmClock size={19} className="shrink-0" /> 1 hora
       </button>
     </>
   );

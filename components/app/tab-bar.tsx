@@ -12,26 +12,32 @@ const TABS = [
   { href: "/objetivos", label: "Objetivos", icon: Target },
 ];
 
+/**
+ * Barra de pestañas flotante de iOS 26: una cápsula de cristal (Liquid Glass)
+ * sobre el contenido. Iconos y textos monocromos; solo la pestaña activa lleva
+ * el color de acento.
+ */
 export function TabBar() {
   const pathname = usePathname();
   return (
     <nav
-      className="pb-safe fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/85 backdrop-blur-xl"
+      className="fixed inset-x-0 bottom-0 z-40 px-4"
+      style={{ paddingBottom: "max(env(safe-area-inset-bottom), 12px)" }}
       aria-label="Navegación principal"
     >
-      <ul className="mx-auto grid h-16 max-w-xl grid-cols-5">
+      <ul className="glass mx-auto grid h-[62px] max-w-md grid-cols-5 rounded-full p-1 shadow-[0_8px_30px_rgb(0_0_0/0.12)]">
         {TABS.map(({ href, label, icon: Icon }) => {
           const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
           return (
             <li key={href}>
               <Link
                 href={href}
-                className={`flex h-full flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors ${
-                  active ? "text-accent" : "text-muted"
+                className={`flex h-full flex-col items-center justify-center gap-0.5 rounded-full text-[10px] font-semibold transition-colors ${
+                  active ? "bg-fg/[0.07] text-accent" : "text-fg"
                 }`}
                 aria-current={active ? "page" : undefined}
               >
-                <Icon size={24} strokeWidth={active ? 2.4 : 1.8} />
+                <Icon size={24} strokeWidth={active ? 2.3 : 1.8} />
                 {label}
               </Link>
             </li>

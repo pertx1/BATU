@@ -31,7 +31,7 @@ export default async function HabitsPage() {
         title="Hábitos"
         subtitle={todays.length ? `${doneCount} de ${todays.length} hechos hoy` : undefined}
         right={
-          <Link href="/habitos/nuevo" aria-label="Nuevo hábito" className="flex size-11 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <Link href="/habitos/nuevo" aria-label="Nuevo hábito" className="glass flex size-11 items-center justify-center rounded-full text-fg">
             <Plus size={24} />
           </Link>
         }

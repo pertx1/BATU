@@ -38,7 +38,7 @@ export function TaskQuickActions({ task, today }: { task: TaskView; today: DateS
       ) : (
         <button
           type="button"
-          className="btn bg-success text-white"
+          className="btn bg-success text-success-fg"
           disabled={busy}
           onClick={() =>
             run(async () => {

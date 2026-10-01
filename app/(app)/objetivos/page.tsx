@@ -29,20 +29,20 @@ export default async function ObjetivosPage({ searchParams }: PageProps<"/objeti
       <PageHeader
         title="Objetivos"
         right={
-          <Link href="/objetivos/nuevo" aria-label="Nuevo objetivo" className="flex size-11 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <Link href="/objetivos/nuevo" aria-label="Nuevo objetivo" className="glass flex size-11 items-center justify-center rounded-full text-fg">
             <Plus size={24} />
           </Link>
         }
       />
       <PageBody>
-        <nav className="mb-5 flex rounded-xl bg-surface-2 p-1" aria-label="Filtrar objetivos">
+        <nav className="mb-5 flex rounded-full bg-surface-2 p-1" aria-label="Filtrar objetivos">
           {FILTERS.map((f) => (
             <Link
               key={f.key}
               href={f.key === "activos" ? "/objetivos" : `/objetivos?estado=${f.key}`}
               aria-current={f === filter ? "page" : undefined}
-              className={`flex min-h-10 flex-1 items-center justify-center rounded-lg px-2 text-[15px] font-semibold transition ${
-                f === filter ? "bg-surface text-fg shadow-sm" : "text-muted"
+              className={`flex min-h-10 flex-1 items-center justify-center rounded-full px-2 text-[15px] font-semibold transition ${
+                f === filter ? "bg-segment text-fg shadow-[0_3px_8px_rgb(0_0_0/0.12)]" : "text-muted"
               }`}
             >
               {f.label}

@@ -29,7 +29,7 @@ export default async function TodayPage() {
         subtitle={date}
         title={hello}
         right={
-          <Link href="/menu" aria-label="Menú" className="flex size-11 items-center justify-center rounded-full bg-surface-2 text-fg">
+          <Link href="/menu" aria-label="Menú" className="glass flex size-11 items-center justify-center rounded-full text-fg">
             <Menu size={22} />
           </Link>
         }

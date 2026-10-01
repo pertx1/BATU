@@ -64,9 +64,11 @@ function DayCell({
       <span
         className={`flex size-9 items-center justify-center rounded-full text-[16px] tabular-nums transition ${
           selected
-            ? "bg-fg font-bold text-bg"
+            ? isToday
+              ? "bg-accent font-bold text-accent-fg"
+              : "bg-fg font-bold text-bg"
             : isToday
-              ? "bg-accent-soft font-bold text-accent"
+              ? "font-bold text-accent"
               : dim
                 ? "text-muted/50"
                 : ""

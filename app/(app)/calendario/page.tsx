@@ -65,20 +65,20 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
         title={title(view, selected)}
         right={
           <>
-            <Link href={nav(shift(view, selected, -1))} replace scroll={false} aria-label="Anterior" className="flex size-10 items-center justify-center rounded-full bg-surface-2">
+            <Link href={nav(shift(view, selected, -1))} replace scroll={false} aria-label="Anterior" className="glass flex size-11 items-center justify-center rounded-full text-fg">
               <ChevronLeft size={22} />
             </Link>
-            <Link href={nav(today)} replace scroll={false} className="flex h-10 items-center rounded-full bg-surface-2 px-3.5 text-[15px] font-semibold">
+            <Link href={nav(today)} replace scroll={false} className="glass flex h-11 items-center rounded-full px-4 text-[15px] font-semibold text-fg">
               Hoy
             </Link>
-            <Link href={nav(shift(view, selected, 1))} replace scroll={false} aria-label="Siguiente" className="flex size-10 items-center justify-center rounded-full bg-surface-2">
+            <Link href={nav(shift(view, selected, 1))} replace scroll={false} aria-label="Siguiente" className="glass flex size-11 items-center justify-center rounded-full text-fg">
               <ChevronRight size={22} />
             </Link>
           </>
         }
       />
       <div className="mx-auto max-w-xl px-5 pb-3">
-        <div className="flex rounded-xl bg-surface-2 p-1" role="tablist" aria-label="Vista">
+        <div className="flex rounded-full bg-surface-2 p-1" role="tablist" aria-label="Vista">
           {(
             [
               ["mes", "Mes"],
@@ -93,8 +93,8 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
               scroll={false}
               role="tab"
               aria-selected={view === v}
-              className={`flex min-h-10 flex-1 items-center justify-center rounded-lg text-[15px] font-semibold transition ${
-                view === v ? "bg-surface text-fg shadow-sm" : "text-muted"
+              className={`flex min-h-10 flex-1 items-center justify-center rounded-full text-[15px] font-semibold transition ${
+                view === v ? "bg-segment text-fg shadow-[0_3px_8px_rgb(0_0_0/0.12)]" : "text-muted"
               }`}
             >
               {label}
