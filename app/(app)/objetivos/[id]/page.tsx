@@ -20,17 +20,14 @@ export const metadata: Metadata = { title: "Objetivo" };
 export default async function GoalPage({ params }: PageProps<"/objetivos/[id]">) {
   const user = await requireOnboardedUser();
   const { id } = await params;
-  const detail = await getGoalDetail(user.id, id);
+  const [detail, linked] = await Promise.all([
+    getGoalDetail(user.id, id),
+    db.task.findMany({ where: { userId: user.id, goalId: id }, include: taskInclude, orderBy: taskOrder }),
+  ]);
   if (!detail) notFound();
   const { goal, milestones, logs } = detail;
   const today = todayStr(user.timezone);
-
-  const tasks =
-    goal.type === "TASKS"
-      ? (await db.task.findMany({ where: { userId: user.id, goalId: id }, include: taskInclude, orderBy: taskOrder })).map(
-          (t) => toTaskView(t, user.timezone),
-        )
-      : [];
+  const tasks = goal.type === "TASKS" ? linked.map((t) => toTaskView(t, user.timezone)) : [];
   const pending = tasks.filter((t) => !t.completedAt);
   const done = tasks.filter((t) => t.completedAt);
   const pct = Math.round(goal.progress * 100);

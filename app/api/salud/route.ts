@@ -4,6 +4,7 @@ import { describeServerError } from "@/lib/api";
 import { databaseEnvNames, diagnoseEnv, resolveDatabaseUrls } from "@/lib/db-url.mjs";
 import { ensureMigrated, migrationStatus } from "@/lib/migrate";
 import { notificationEnvStatus } from "@/lib/deploy-info";
+import { regionAdvice } from "@/lib/region";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +47,30 @@ export async function GET() {
 
   const ok = mig.ok && tables.ok;
   // Todo bien: no hace falta enseñar detalles de la configuración.
-  if (ok) return NextResponse.json({ ok: true, conexion: "ok", tablas: "ok", configuracion: notificationEnvStatus() });
+  if (ok) {
+    // Velocidad: tiempo de ida y vuelta a la base de datos (mediana de 5).
+    const times: number[] = [];
+    for (let i = 0; i < 5; i++) {
+      const t = performance.now();
+      await db.$queryRawUnsafe(`SELECT 1`);
+      times.push(performance.now() - t);
+    }
+    const ms = Math.round(times.sort((a, b) => a - b)[2]);
+    const region = regionAdvice(new URL(resolved.url).hostname, process.env.VERCEL_REGION);
+    const consejo =
+      region.mismaZona === false
+        ? `Vercel ejecuta la app en ${region.regionServidor} y la base de datos está en ${region.regionBaseDeDatos}: cada consulta cruza medio mundo. En Vercel → Settings → Functions → Function Region elige ${region.regionRecomendada} y vuelve a desplegar.`
+        : ms > 40
+          ? "La base de datos tarda en responder. Comprueba que Vercel y Supabase están en la misma región."
+          : "Todo en la misma zona: bien.";
+    return NextResponse.json({
+      ok: true,
+      conexion: "ok",
+      tablas: "ok",
+      velocidad: { consultaMs: ms, ...region, consejo },
+      configuracion: notificationEnvStatus(),
+    });
+  }
   return NextResponse.json(
     {
       ok,

@@ -113,7 +113,7 @@ export function TaskItem({
           checked={done}
           onToggle={toggle}
           color={done ? undefined : PRIORITY_COLOR[task.priority]}
-          label={done ? "Marcar como pendiente" : "Completar tarea"}
+          label={done ? `Marcar «${task.title}» como pendiente` : `Completar «${task.title}»`}
         />
       </div>
       <div className="min-w-0 flex-1">

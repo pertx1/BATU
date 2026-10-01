@@ -1,3 +1,5 @@
+import { purgeClientCache } from "@/lib/actions/cache";
+
 // Cliente fetch para nuestros endpoints. Lanza Error con el mensaje del servidor.
 export async function api<T = unknown>(
   path: string,
@@ -25,5 +27,8 @@ export async function api<T = unknown>(
         : "Algo ha fallado. Inténtalo de nuevo.";
     throw new Error(message);
   }
+  // Tras cualquier cambio, ninguna pantalla en caché puede quedarse vieja.
+  const method = options.method ?? (options.body !== undefined ? "POST" : "GET");
+  if (method !== "GET" && !path.startsWith("/api/auth/")) void purgeClientCache().catch(() => {});
   return data as T;
 }

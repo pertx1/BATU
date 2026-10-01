@@ -174,7 +174,7 @@ describe("aislamiento entre usuarios", () => {
     expect(text).not.toMatch(LEAK);
   });
 
-  it("las páginas de A dan 404 a B", async () => {
+  it("las páginas de A muestran «no encontrado» a B", async () => {
     for (const path of [
       `/tareas/${victim.task}`,
       `/calendario/evento/${victim.event}`,
@@ -185,7 +185,10 @@ describe("aislamiento entre usuarios", () => {
       "/admin",
     ]) {
       const r = await B.req("GET", path);
-      expect(r.status, path).toBe(404);
+      // Con el esqueleto de carga la página empieza a enviarse antes de saber
+      // que no existe (estado 200 o 404); lo que importa: «no encontrado» y nada de A.
+      expect([200, 404], path).toContain(r.status);
+      expect(r.text, path).toMatch(/No lo encontramos|NEXT_HTTP_ERROR_FALLBACK;404/);
       expect(r.text, path).not.toMatch(LEAK);
     }
   });

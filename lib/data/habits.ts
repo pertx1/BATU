@@ -4,18 +4,19 @@ import { addDays, dbToDateStr, type DateStr, localDateStr } from "@/lib/dates";
 import { bestStreak, currentStreak, isScheduledOn } from "@/lib/habits";
 import type { HabitView } from "@/lib/types";
 
-/** Hábitos del usuario con su estado de hoy y sus rachas (2 consultas, sin N+1). */
+/** Hábitos del usuario con su estado de hoy y sus rachas (2 consultas en paralelo, sin N+1). */
 export async function listHabitViews(userId: string, timeZone: string, today: DateStr) {
-  const habits = await db.habit.findMany({
-    where: { userId, archivedAt: null },
-    orderBy: [{ position: "asc" }, { createdAt: "asc" }],
-  });
+  const [habits, logs] = await Promise.all([
+    db.habit.findMany({
+      where: { userId, archivedAt: null },
+      orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+    }),
+    db.habitLog.findMany({
+      where: { userId, habit: { archivedAt: null } },
+      select: { habitId: true, date: true },
+    }),
+  ]);
   if (!habits.length) return { habits: [] as HabitView[], logs: new Map<string, Set<DateStr>>() };
-
-  const logs = await db.habitLog.findMany({
-    where: { userId, habitId: { in: habits.map((h) => h.id) } },
-    select: { habitId: true, date: true },
-  });
   const byHabit = new Map<string, Set<DateStr>>();
   for (const l of logs) {
     const set = byHabit.get(l.habitId) ?? new Set<DateStr>();

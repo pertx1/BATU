@@ -30,6 +30,12 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  experimental: {
+    // Caché del navegador para ir y volver entre pantallas sin esperar al
+    // servidor. Cualquier cambio (crear, completar…) hace router.refresh(),
+    // que la vacía, así que nunca se ven datos viejos tras editar.
+    staleTimes: { dynamic: 30, static: 120 },
+  },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },

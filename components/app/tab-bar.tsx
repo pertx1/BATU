@@ -32,6 +32,8 @@ export function TabBar() {
             <li key={href}>
               <Link
                 href={href}
+                // Se precarga entera al abrir la app: cambiar de pestaña es instantáneo.
+                prefetch
                 className={`flex h-full flex-col items-center justify-center gap-0.5 rounded-full text-[10px] font-semibold transition-colors ${
                   active ? "bg-fg/[0.07] text-accent" : "text-fg"
                 }`}

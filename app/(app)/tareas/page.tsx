@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle2, Inbox, ListTodo, Plus } from "lucide-react";
 import { requireOnboardedUser } from "@/lib/auth/session";
@@ -26,31 +27,28 @@ export default async function TasksPage({ searchParams }: PageProps<"/tareas">) 
   const { f } = await searchParams;
   const key = typeof f === "string" ? f : "hoy";
   const today = todayStr(user.timezone);
-  const projects = await listProjects(user.id);
+  const projectId = key.startsWith("p:") ? key.slice(2) : null;
+  const filter: TaskFilter = projectId
+    ? { kind: "project", projectId }
+    : key === "semana"
+      ? { kind: "week" }
+      : key === "bandeja"
+        ? { kind: "inbox" }
+        : key === "sinfecha"
+          ? { kind: "nodate" }
+          : key === "hechas"
+            ? { kind: "done" }
+            : { kind: "today" };
 
-  let filter: TaskFilter;
-  let project = null as (typeof projects)[number] | null;
-  if (key.startsWith("p:")) {
-    project = projects.find((p) => p.id === key.slice(2)) ?? null;
-    filter = project ? { kind: "project", projectId: project.id } : { kind: "today" };
-  } else {
-    filter =
-      key === "semana"
-        ? { kind: "week" }
-        : key === "bandeja"
-          ? { kind: "inbox" }
-          : key === "sinfecha"
-            ? { kind: "nodate" }
-            : key === "hechas"
-              ? { kind: "done" }
-              : { kind: "today" };
-  }
-  const activeKey = project ? key : filter.kind === "today" ? "hoy" : key;
-
-  const [tasks, inboxCount] = await Promise.all([
+  // Todo a la vez: una sola espera a la base de datos.
+  const [projects, tasks, inboxCount] = await Promise.all([
+    listProjects(user.id),
     listTasks(user.id, user.timezone, filter, today),
     db.task.count({ where: { userId: user.id, completedAt: null, dueDate: null, projectId: null } }),
   ]);
+  const project = projectId ? (projects.find((p) => p.id === projectId) ?? null) : null;
+  if (projectId && !project) redirect("/tareas");
+  const activeKey = project ? key : filter.kind === "today" ? "hoy" : key;
 
   return (
     <>

@@ -2,6 +2,7 @@ import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import { cache } from "react";
 import { cookies } from "next/headers";
+import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { ensureMigrated } from "@/lib/migrate";
@@ -85,16 +86,18 @@ export const getCurrentSession = cache(async (): Promise<CurrentSession | null> 
   // Sesión deslizante: se renueva como mucho cada 5 minutos.
   if (now - session.lastSeenAt.getTime() > TOUCH_INTERVAL_MS) {
     const nowDate = new Date(now);
-    await db.$transaction([
-      db.session.update({
-        where: { id: session.id },
-        data: {
-          lastSeenAt: nowDate,
-          expiresAt: new Date(now + SESSION_MAX_AGE_SECONDS * 1000),
-        },
-      }),
-      db.user.update({ where: { id: session.userId }, data: { lastActiveAt: nowDate } }),
-    ]);
+    // Después de responder: la página no espera a esta escritura.
+    after(() =>
+      db
+        .$transaction([
+          db.session.update({
+            where: { id: session.id },
+            data: { lastSeenAt: nowDate, expiresAt: new Date(now + SESSION_MAX_AGE_SECONDS * 1000) },
+          }),
+          db.user.update({ where: { id: session.userId }, data: { lastActiveAt: nowDate } }),
+        ])
+        .catch((err) => console.error("[antola] renovar sesión:", err.message)),
+    );
   }
 
   return {

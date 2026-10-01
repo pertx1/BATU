@@ -25,7 +25,7 @@ export default async function MenuPage() {
         <ul className="card divide-y divide-line overflow-hidden">
           {items.map(({ href, label, icon: Icon }) => (
             <li key={href}>
-              <Link href={href} className="flex min-h-14 items-center gap-3 px-4 active:bg-surface-2">
+              <Link href={href} prefetch className="flex min-h-14 items-center gap-3 px-4 active:bg-surface-2">
                 <span className="flex size-9 items-center justify-center rounded-xl bg-accent-soft text-accent">
                   <Icon size={20} />
                 </span>
