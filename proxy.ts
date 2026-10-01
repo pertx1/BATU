@@ -6,7 +6,7 @@ const ONE_YEAR = 60 * 60 * 24 * 365;
 // Rutas accesibles sin sesión. La validación real de la sesión se hace en el
 // servidor (getCurrentSession); aquí solo se redirige rápido si no hay cookie.
 const PUBLIC_PATHS = ["/login", "/registro", "/recuperar", "/restablecer", "/privacidad"];
-const PUBLIC_API_PREFIXES = ["/api/auth/", "/api/cron/"];
+const PUBLIC_API_PREFIXES = ["/api/auth/", "/api/cron/", "/api/salud"];
 
 function isPublic(pathname: string) {
   return (

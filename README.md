@@ -19,19 +19,24 @@ npm run dev
 
 ## Despliegue en Vercel
 
-1. **Neon**: crea un proyecto y copia dos cadenas de conexión desde *Connect*:
-   con *Connection pooling* activado (`DATABASE_URL`, el host lleva `-pooler`) y desactivado (`DIRECT_URL`).
-2. **Vercel → Add New → Project** e importa este repositorio.
-   - Framework Preset: **Next.js**
-   - Build Command: por defecto (`npm run build`) o `npm run vercel-build`; son lo mismo.
-     `scripts/build.mjs` ejecuta `prisma generate`, `prisma migrate deploy` (solo en Vercel) y `next build`
-   - Install Command y Output Directory: por defecto
-3. **Environment Variables**: añade todas las de `.env.example` (marca solo *Production*).
-4. **Deploy**. Después ajusta `APP_URL` a la URL definitiva y vuelve a desplegar.
-5. `DIRECT_URL` es opcional en Vercel: si falta se usa `DATABASE_URL_UNPOOLED`
-   (la crea la integración de Neon) o se deduce de `DATABASE_URL` quitando `-pooler` del host.
-6. Si trabajas en una rama distinta de `main`, cámbiala en
-   *Settings → Environments → Production → Branch Tracking*.
+1. **Base de datos (Supabase)**: en tu proyecto → **Connect** → pestaña *Connection String* →
+   **Transaction pooler** (host `aws-0-<región>.pooler.supabase.com`, puerto **6543**).
+   Copia esa URL y cambia `[YOUR-PASSWORD]` por la contraseña de la base de datos.
+   - No uses la *Direct connection* (`db.xxxx.supabase.co`): es solo IPv6 y Vercel no llega.
+   - Si la contraseña tiene símbolos (`@ # / ? :`), cámbiala por una solo con letras y números
+     en *Project Settings → Database → Reset database password*.
+2. **Vercel → Add New → Project** e importa este repositorio. Framework **Next.js** y el resto
+   por defecto (Build Command `npm run build`, sin *Override*).
+3. **Environment Variables** (Production): `DATABASE_URL` con la URL del paso 1 y el resto de
+   `.env.example`. `DIRECT_URL` es opcional.
+4. **Deploy**. Después abre `https://TU-APP.vercel.app/api/salud`: debe decir `"ok": true`.
+   Si no, indica el problema (sin mostrar contraseñas).
+
+Cómo funciona la base de datos en el despliegue (`scripts/build.mjs` y `lib/migrate.ts`):
+- El build intenta `prisma migrate deploy`, pero **nunca falla por la base de datos**.
+- Al arrancar, la app aplica sola las migraciones pendientes (compatibles con Prisma).
+- En runtime se usa el pooler con `pgbouncer=true` y `connection_limit=1`; las migraciones
+  van por el modo sesión (puerto 5432) del mismo pooler.
 
 ### Scripts de instalación (npm 11+/12)
 

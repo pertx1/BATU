@@ -4,6 +4,7 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { ensureMigrated } from "@/lib/migrate";
 
 export const SESSION_COOKIE = "antola_session";
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 365; // 1 año
@@ -60,6 +61,7 @@ export const getCurrentSession = cache(async (): Promise<CurrentSession | null> 
   const token = jar.get(SESSION_COOKIE)?.value;
   if (!token) return null;
 
+  await ensureMigrated().catch((err) => console.error("[antola] migraciones:", err.message));
   const session = await db.session.findUnique({
     where: { id: hashToken(token) },
     include: {

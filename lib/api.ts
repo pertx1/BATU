@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { getCurrentSession, type CurrentSession } from "@/lib/auth/session";
+import { ensureMigrated } from "@/lib/migrate";
 
 export class HttpError extends Error {
   constructor(
@@ -73,6 +74,7 @@ export function withPublic<P = Record<string, string>>(
   return async (req: NextRequest, ctx: RouteCtx<P>) => {
     try {
       checkSameOrigin(req);
+      await ensureMigrated().catch((err) => console.error("[antola] migraciones:", err.message));
       return await handler(req, ctx);
     } catch (err) {
       return handleError(err);
