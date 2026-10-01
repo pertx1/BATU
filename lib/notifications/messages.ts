@@ -30,12 +30,14 @@ function whenLabel(day: DateStr | null, minutes: number | null, today: DateStr):
   return minutes != null ? `${d} a las ${minutesToHHMM(minutes)}` : d;
 }
 
-/** Todas las notificaciones: «Antola» de título y debajo lo que hay que hacer. */
-export const NOTIFICATION_TITLE = "Antola";
-
-/** Primera línea: la cosa que hay que hacer. Segunda (opcional): cuándo o un detalle. */
-function lines(main: string, detail?: string | null): string {
-  return detail ? `${main}\n${detail}` : main;
+/**
+ * Título: lo que hay que hacer; debajo, cuándo o un detalle. El nombre de la
+ * app no va en el título: iOS ya añade «from Antola» (o «de Antola») debajo de
+ * él en todas las notificaciones web y no se puede quitar, así que poner
+ * «Antola» de título lo mostraría dos veces.
+ */
+function notice(main: string, detail?: string | null): Pick<PushPayload, "title" | "body"> {
+  return { title: main, body: detail ?? "" };
 }
 
 export function taskMessage(
@@ -45,8 +47,7 @@ export function taskMessage(
 ): PushPayload {
   const when = whenLabel(task.dueDate, task.dueAt ? localMinutes(task.dueAt, timeZone) : null, today);
   return {
-    title: NOTIFICATION_TITLE,
-    body: lines(task.title, when),
+    ...notice(task.title, when ?? "Tarea pendiente"),
     url: `/tareas/${task.id}`,
     tag: `task:${task.id}`,
   };
@@ -62,8 +63,7 @@ export function eventMessage(
     ? `${dayLabel(day, today)} · todo el día`
     : whenLabel(day, event.startAt ? localMinutes(event.startAt, timeZone) : null, today);
   return {
-    title: NOTIFICATION_TITLE,
-    body: lines(event.title, [when, event.location].filter(Boolean).join(" · ")),
+    ...notice(event.title, [when, event.location].filter(Boolean).join(" · ")),
     url: `/calendario/evento/${event.id}`,
     tag: `event:${event.id}`,
   };
@@ -71,8 +71,7 @@ export function eventMessage(
 
 export function habitMessage(habit: { id: string; name: string; emoji: string | null }): PushPayload {
   return {
-    title: NOTIFICATION_TITLE,
-    body: lines(`${habit.emoji ? `${habit.emoji} ` : ""}${habit.name}`, "Aún no lo has marcado hoy."),
+    ...notice(`${habit.emoji ? `${habit.emoji} ` : ""}${habit.name}`, "Aún no lo has marcado hoy."),
     url: "/",
     tag: `habit:${habit.id}`,
   };
@@ -91,9 +90,8 @@ export function morningMessage(
   const hello = name ? `Buenos días, ${name}.` : "Buenos días.";
   const summary = parts.length ? `Hoy tienes ${joinList(parts)}.` : "Hoy no tienes nada planificado.";
   return {
-    title: NOTIFICATION_TITLE,
     // Lo primero, lo más importante del día; debajo, el resumen.
-    body: topTask ? lines(topTask, `${hello} ${summary}`) : lines(hello, summary),
+    ...(topTask ? notice(topTask, `${hello} ${summary}`) : notice(hello, summary)),
     url: "/",
     tag: "morning",
   };
@@ -101,8 +99,7 @@ export function morningMessage(
 
 export function eveningMessage(pending: number): PushPayload {
   return {
-    title: NOTIFICATION_TITLE,
-    body: `Te ${pending === 1 ? "queda 1 cosa" : `quedan ${pending} cosas`} por hacer hoy.`,
+    ...notice(`Te ${pending === 1 ? "queda 1 cosa" : `quedan ${pending} cosas`} por hacer hoy`, "Repaso de la noche"),
     url: "/",
     tag: "evening",
   };
@@ -110,8 +107,7 @@ export function eveningMessage(pending: number): PushPayload {
 
 export function overdueMessage(count: number): PushPayload {
   return {
-    title: NOTIFICATION_TITLE,
-    body: lines(`Tienes ${plural(count, "tarea atrasada", "tareas atrasadas")}.`, "Reprográmalas o márcalas como hechas."),
+    ...notice(`Tienes ${plural(count, "tarea atrasada", "tareas atrasadas")}`, "Reprográmalas o márcalas como hechas."),
     url: "/",
     tag: "overdue",
   };
@@ -119,8 +115,7 @@ export function overdueMessage(count: number): PushPayload {
 
 export function weeklyMessage(): PushPayload {
   return {
-    title: NOTIFICATION_TITLE,
-    body: lines("Revisión semanal", "Repasa tu semana y planifica la siguiente."),
+    ...notice("Revisión semanal", "Repasa tu semana y planifica la siguiente."),
     url: "/revision",
     tag: "weekly",
   };
@@ -128,8 +123,7 @@ export function weeklyMessage(): PushPayload {
 
 export function testMessage(): PushPayload {
   return {
-    title: NOTIFICATION_TITLE,
-    body: "¡Las notificaciones funcionan! 🎉",
+    ...notice("¡Las notificaciones funcionan! 🎉", "Así te llegarán los avisos."),
     url: "/ajustes",
     tag: "test",
   };

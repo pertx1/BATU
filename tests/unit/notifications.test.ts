@@ -79,26 +79,26 @@ describe("textos de los avisos", () => {
   it("resumen de la mañana", () => {
     expect(joinList(["a", "b", "c"])).toBe("a, b y c");
     const m = morningMessage("Ana", { tasks: 3, habits: 1, events: 0 }, "Llamar al banco");
-    expect(m.title).toBe("Antola");
-    expect(m.body).toBe("Llamar al banco\nBuenos días, Ana. Hoy tienes 3 tareas y 1 hábito.");
-    expect(morningMessage(null, { tasks: 0, habits: 0, events: 0 }, null).body).toBe(
-      "Buenos días.\nHoy no tienes nada planificado.",
-    );
+    expect(m.title).toBe("Llamar al banco");
+    expect(m.body).toBe("Buenos días, Ana. Hoy tienes 3 tareas y 1 hábito.");
+    const empty = morningMessage(null, { tasks: 0, habits: 0, events: 0 }, null);
+    expect([empty.title, empty.body]).toEqual(["Buenos días.", "Hoy no tienes nada planificado."]);
   });
 
   it("repaso de la noche y atrasadas", () => {
-    expect(eveningMessage(1).body).toBe("Te queda 1 cosa por hacer hoy.");
-    expect(eveningMessage(4).body).toBe("Te quedan 4 cosas por hacer hoy.");
-    expect(overdueMessage(2).body).toContain("2 tareas atrasadas");
+    expect(eveningMessage(1).title).toBe("Te queda 1 cosa por hacer hoy");
+    expect(eveningMessage(4).title).toBe("Te quedan 4 cosas por hacer hoy");
+    expect(overdueMessage(2).title).toContain("2 tareas atrasadas");
   });
 
-  it("título «Antola» y la tarea debajo", () => {
+  // iOS ya pone «from Antola» debajo del título: el título es la tarea, no «Antola».
+  it("título = la tarea y debajo cuándo", () => {
     const t = taskMessage({ id: "t1", title: "Llamar al banco", dueDate: "2026-10-01", dueAt: new Date("2026-10-01T08:00:00Z") }, "Europe/Madrid", "2026-10-01");
-    expect(t.title).toBe("Antola");
-    expect(t.body).toBe("Llamar al banco\nHoy a las 10:00");
+    expect(t.title).toBe("Llamar al banco");
+    expect(t.body).toBe("Hoy a las 10:00");
     const h = habitMessage({ id: "h1", name: "Leer", emoji: "📚" });
-    expect(h.title).toBe("Antola");
-    expect(h.body.split("\n")[0]).toBe("📚 Leer");
+    expect(h.title).toBe("📚 Leer");
+    expect(h.body).toBe("Aún no lo has marcado hoy.");
   });
 });
 
