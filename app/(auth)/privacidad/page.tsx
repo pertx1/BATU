@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { BackLink } from "@/components/app/back-link";
 
 export const metadata: Metadata = { title: "Privacidad" };
 
 export default function PrivacyPage() {
   return (
     <article className="space-y-5 py-4 leading-relaxed">
-      <Link href="/registro" className="text-sm font-semibold text-accent">← Volver</Link>
+      <BackLink fallback="/login" />
       <h1 className="text-2xl font-bold">Política de privacidad</h1>
 
       <section className="space-y-2">
@@ -40,9 +40,10 @@ export default function PrivacyPage() {
       <section className="space-y-2">
         <h2 className="text-lg font-semibold">Proveedores</h2>
         <p className="text-muted">
-          Los datos se alojan en una base de datos PostgreSQL (Neon) y la app se sirve desde
-          Vercel. Los emails se envían con Resend. Las notificaciones pasan por el servicio push
-          de tu navegador (Apple en iPhone).
+          Los datos se alojan en una base de datos PostgreSQL (Supabase) y la app se sirve desde
+          Vercel. Los emails de recuperación de contraseña se envían con Resend. Las
+          notificaciones pasan por el servicio push de tu navegador (Apple en iPhone); solo
+          llevan el texto del aviso.
         </p>
       </section>
 
@@ -51,6 +52,24 @@ export default function PrivacyPage() {
         <p className="text-muted">
           Desde «Mi cuenta» puedes descargar todos tus datos en formato JSON, corregirlos o
           eliminar tu cuenta. Al eliminarla se borran de forma definitiva todos tus datos.
+        </p>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-lg font-semibold">Cuánto tiempo los guardamos</h2>
+        <p className="text-muted">
+          Tus datos se guardan mientras tengas la cuenta. El registro de notificaciones enviadas se
+          borra a los 30 días y los intentos de inicio de sesión, al día siguiente. Al eliminar la
+          cuenta se borra todo al momento.
+        </p>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-lg font-semibold">Seguridad</h2>
+        <p className="text-muted">
+          Las contraseñas se guardan con bcrypt (nadie puede leerlas), la conexión va cifrada
+          (HTTPS) y los enlaces para recuperar la contraseña caducan en 1 hora y solo sirven una vez.
+          Tras varios intentos fallidos de acceso, la cuenta se bloquea unos minutos.
         </p>
       </section>
 

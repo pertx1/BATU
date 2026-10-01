@@ -59,6 +59,18 @@ Cómo funciona el programador (`lib/notifications/tick.ts`):
 - Lo que cae en "no molestar" se envía al terminar ese horario; lo que llega más de 2 h
   tarde se descarta. Las suscripciones que responden 404/410 se borran.
 
+### Emails (recuperar contraseña) y administración
+
+- **Resend**: crea una cuenta en [resend.com](https://resend.com), verifica tu dominio
+  (Domains → Add domain) y crea una API key. En Vercel define `RESEND_API_KEY` y
+  `EMAIL_FROM` (p. ej. `Antola <no-reply@tudominio.com>`, con el dominio verificado).
+  Sin dominio propio, Resend solo deja enviar a tu propio email desde `onboarding@resend.dev`.
+- Los enlaces para restablecer la contraseña caducan en 1 hora, son de un solo uso y
+  cierran la sesión en todos los dispositivos.
+- **Admin**: `ADMIN_EMAIL` es la única cuenta que ve *Menú → Administración* (`/admin`):
+  número de usuarios, fecha de registro, última actividad y desactivar/reactivar cuentas.
+  No puede ver tareas ni ningún otro contenido. Para el resto, `/admin` responde 404.
+
 ### Scripts de instalación (npm 11+/12)
 
 Las versiones recientes de npm bloquean por defecto los scripts de instalación de las

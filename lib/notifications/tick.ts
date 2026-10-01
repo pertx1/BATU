@@ -450,11 +450,7 @@ export async function runTick(now: Date = new Date()): Promise<TickReport> {
         )
       : null,
     advance(consumedTasks, consumedEvents, habitMoves, periodicMoves, vapid !== null),
-    now.getUTCMinutes() === 0
-      ? db.notificationLog.deleteMany({
-          where: { createdAt: { lt: new Date(now.getTime() - LOG_RETENTION_DAYS * 86400000) } },
-        })
-      : null,
+    now.getUTCMinutes() === 0 ? housekeeping(now) : null,
   ]);
 
   return {
@@ -471,6 +467,17 @@ export async function runTick(now: Date = new Date()): Promise<TickReport> {
     descartados: stale,
     dispositivosBorrados: delivery?.removedDevices ?? 0,
   };
+}
+
+/** Limpieza horaria: registros viejos, sesiones caducadas y enlaces de recuperación usados. */
+async function housekeeping(now: Date) {
+  const ago = (days: number) => new Date(now.getTime() - days * 86400000);
+  await Promise.allSettled([
+    db.notificationLog.deleteMany({ where: { createdAt: { lt: ago(LOG_RETENTION_DAYS) } } }),
+    db.loginAttempt.deleteMany({ where: { createdAt: { lt: ago(1) } } }),
+    db.session.deleteMany({ where: { expiresAt: { lt: now } } }),
+    db.passwordResetToken.deleteMany({ where: { OR: [{ expiresAt: { lt: now } }, { usedAt: { not: null } }] } }),
+  ]);
 }
 
 /**
