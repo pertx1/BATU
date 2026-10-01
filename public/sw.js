@@ -4,7 +4,7 @@
  * - Push: muestra la notificación y abre la URL al tocarla.
  * - Si el navegador renueva la suscripción push, se vuelve a registrar sola.
  */
-const VERSION = "v2";
+const VERSION = "v3";
 const STATIC_CACHE = `antola-static-${VERSION}`;
 const PRECACHE = [
   "/offline.html",
@@ -91,6 +91,11 @@ self.addEventListener("push", (event) => {
     icon: "/icons/icon-192.png",
     badge: "/icons/badge-96.png",
     tag: data.tag || undefined,
+    // Como un mensaje de WhatsApp: aunque sustituya a otro aviso con la misma
+    // etiqueta, vuelve a sonar y a mostrarse (no se actualiza en silencio).
+    renotify: !!data.tag,
+    silent: false,
+    vibrate: [200, 100, 200], // Android
     data: { url: data.url || "/" },
     timestamp: data.timestamp || Date.now(),
   };
