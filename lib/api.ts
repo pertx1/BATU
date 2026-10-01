@@ -61,8 +61,34 @@ function handleError(err: unknown) {
     if (err.code === "P2025") return jsonError(404, "No encontrado");
     if (err.code === "P2002") return jsonError(409, "Ya existe");
   }
-  console.error(err);
-  return jsonError(500, "Error interno");
+  console.error("[antola] Error en la API:", err);
+  return jsonError(...describeServerError(err));
+}
+
+/**
+ * Traduce los fallos de servidor a un mensaje útil en español, con el código
+ * de Prisma/PostgreSQL pero sin datos sensibles (nunca la URL ni la contraseña).
+ */
+export function describeServerError(err: unknown): [number, string] {
+  const help = " Abre /api/salud para ver el detalle.";
+  if (err instanceof Prisma.PrismaClientInitializationError) {
+    return [503, `No se puede conectar con la base de datos (${err.errorCode ?? "sin código"}).${help}`];
+  }
+  if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    if (err.code === "P2021" || err.code === "P2022") {
+      return [503, `Faltan tablas en la base de datos (${err.code}). Se crearán al reintentar en unos segundos.${help}`];
+    }
+    if (err.code.startsWith("P1")) {
+      return [503, `No se puede conectar con la base de datos (${err.code}).${help}`];
+    }
+    return [500, `Error de base de datos (${err.code}).${help}`];
+  }
+  if (err instanceof Prisma.PrismaClientUnknownRequestError || err instanceof Prisma.PrismaClientRustPanicError) {
+    const msg = String((err as Error).message ?? "");
+    const pg = /prepared statement/i.test(msg) ? "pooler sin pgbouncer=true" : "desconocido";
+    return [500, `Error de base de datos (${pg}).${help}`];
+  }
+  return [500, `Error interno (${err instanceof Error ? err.name : "desconocido"}).${help}`];
 }
 
 type RouteCtx<P> = { params: Promise<P> };
