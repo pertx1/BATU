@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { addDays } from "@/lib/dates";
 import { midpoints, normalizeEstimate } from "@/lib/nutrition/estimate";
 import { sniffImage } from "@/lib/nutrition/photo";
+import { formatChange, projection, reachedTarget, weeklyRate, weightMilestones, weightSummary } from "@/lib/nutrition/weight";
 import { formatLiters, formatWater, logStreak, mealTypeForMinutes, remaining, sumTotals } from "@/lib/nutrition/meals";
 import {
   bmi,
@@ -210,5 +211,40 @@ describe("estimación de comidas", () => {
     expect(sniffImage(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0]))).toBe("image/png");
     expect(sniffImage(new TextEncoder().encode("RIFF1234WEBPVP8 "))).toBe("image/webp");
     expect(sniffImage(new TextEncoder().encode("<script>alert(1)</script>"))).toBeNull();
+  });
+});
+
+describe("peso", () => {
+  const days = (n: number, from = "2026-09-01") => new Date(Date.parse(from) + n * 86400000).toISOString().slice(0, 10);
+
+  it("resume la tendencia y los cambios de la semana y el mes", () => {
+    const logs = Array.from({ length: 36 }, (_, i) => ({ day: days(i), kg: 82 - i * 0.1 }));
+    const s = weightSummary(logs, days(35));
+    expect(s.current).toBeLessThan(80);
+    expect(s.change7).toBeLessThan(0);
+    expect(s.change30).toBeLessThan(s.change7!);
+    expect(weightSummary(logs.slice(30), days(35)).change30).toBeNull(); // sin datos de hace un mes
+  });
+
+  it("proyecta la llegada solo si la tendencia va hacia el objetivo", () => {
+    const down = weightSummary(Array.from({ length: 22 }, (_, i) => ({ day: days(i), kg: 82 - i * 0.07 })), days(21));
+    const rate = weeklyRate(down.series, days(21))!;
+    expect(rate).toBeLessThan(0);
+    expect(projection(down.current, 77, rate, days(21))).toMatch(/^2026|^2027/);
+    expect(projection(down.current, 85, rate, days(21))).toBeNull(); // quiere ganar y baja
+    expect(weeklyRate(down.series.slice(0, 2), days(21))).toBeNull();
+  });
+
+  it("hitos cada 2 kg y a mitad de camino", () => {
+    const m = weightMilestones(82, 75, 79.5);
+    expect(m.map((x) => x.kg)).toEqual([80, 78.5, 78, 76]);
+    expect(m.filter((x) => x.reached).map((x) => x.id)).toEqual(["2kg"]);
+    expect(m.find((x) => x.id === "half")!.label).toBe("Mitad del camino");
+    const gain = weightMilestones(60, 64, 62);
+    expect(gain.map((x) => [x.kg, x.reached])).toEqual([[62, true]]);
+    expect(gain[0].label).toContain("mitad");
+    expect(reachedTarget(82, 76.9, 77)).toBe(true);
+    expect(reachedTarget(60, 63.9, 64)).toBe(false);
+    expect(formatChange(-0.44)).toBe("−0,4 kg");
   });
 });

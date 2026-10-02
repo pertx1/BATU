@@ -4,6 +4,8 @@ import { Plus, Target } from "lucide-react";
 import { requireOnboardedUser } from "@/lib/auth/session";
 import { todayStr } from "@/lib/dates";
 import { listGoalViews } from "@/lib/data/goals";
+import { weighIns } from "@/lib/nutrition/weight-service";
+import { weightSummary } from "@/lib/nutrition/weight";
 import type { GoalStatus } from "@/lib/types";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { GoalCard } from "@/components/goals/goal-card";
@@ -23,6 +25,8 @@ export default async function ObjetivosPage({ searchParams }: PageProps<"/objeti
   const filter = FILTERS.find((f) => f.key === sp.estado) ?? FILTERS[0];
   const goals = await listGoalViews(user.id, filter.status);
   const today = todayStr(user.timezone);
+  // La tendencia del peso, solo si hay algún objetivo «Peso».
+  const series = goals.some((g) => g.type === "WEIGHT") ? weightSummary(await weighIns(user.id, today), today).series : [];
 
   return (
     <>
@@ -53,7 +57,7 @@ export default async function ObjetivosPage({ searchParams }: PageProps<"/objeti
           <ul className="space-y-3">
             {goals.map((g) => (
               <li key={g.id}>
-                <GoalCard goal={g} today={today} />
+                <GoalCard goal={g} today={today} weight={g.type === "WEIGHT" && g.targetValue != null ? { series, target: g.targetValue } : null} />
               </li>
             ))}
           </ul>

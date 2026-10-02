@@ -3,6 +3,7 @@ import { z } from "zod";
 import { parseBody, withUser } from "@/lib/api";
 import { award } from "@/lib/gamification";
 import { planInputSchema, saveProfile } from "@/lib/nutrition/profile";
+import { syncWeightGoal } from "@/lib/nutrition/weight-service";
 
 const schema = planInputSchema.extend({
   onboarding: z.boolean().default(false),
@@ -14,6 +15,8 @@ const schema = planInputSchema.extend({
 export const POST = withUser(async (req, { user }) => {
   const { onboarding, recordWeight, ...body } = await parseBody(req, schema);
   const { profile, plan } = await saveProfile(user, body, { firstWeighIn: onboarding || recordWeight });
+  // El objetivo «Peso» sigue a la tendencia de los pesajes.
+  if (!onboarding) await syncWeightGoal(user);
   // Crear el objetivo "Peso" puede desbloquear «Soñadora».
   const gamification = onboarding && profile.goalId ? await award(user, { type: "check" }) : null;
   return NextResponse.json({

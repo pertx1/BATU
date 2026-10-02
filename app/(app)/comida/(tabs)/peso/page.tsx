@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
-import { Scale } from "lucide-react";
+import { requireOnboardedUser } from "@/lib/auth/session";
+import { weightPageData } from "@/lib/nutrition/weight-service";
 import { PageBody } from "@/components/app/page-header";
-import { EmptyState } from "@/components/ui/controls";
+import { WeightView } from "@/components/nutrition/weight-view";
 
 export const metadata: Metadata = { title: "Peso" };
 
-export default function WeightPage() {
+export default async function WeightPage() {
+  const user = await requireOnboardedUser();
+  const data = await weightPageData(user);
   return (
     <PageBody>
-      <div className="mt-6">
-        <EmptyState icon={<Scale size={28} />} title="Muy pronto" text="Aquí verás la tendencia de tu peso, tus pesajes y el camino hacia tu objetivo." />
-      </div>
+      <WeightView data={data} />
     </PageBody>
   );
 }

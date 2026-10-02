@@ -14,6 +14,9 @@ import { deadlineLabel, ProgressBar } from "@/components/goals/goal-card";
 import { GoalStatusControls, MilestoneList, ProgressLogger } from "@/components/goals/goal-actions";
 import { TaskList } from "@/components/tasks/task-item";
 import { SectionTitle } from "@/components/ui/controls";
+import { weightPageData } from "@/lib/nutrition/weight-service";
+import { formatKg } from "@/lib/nutrition/calc";
+import { WeightChart } from "@/components/nutrition/weight-chart";
 
 export const metadata: Metadata = { title: "Objetivo" };
 
@@ -103,6 +106,8 @@ export default async function GoalPage({ params }: PageProps<"/objetivos/[id]">)
             </>
           ) : null}
 
+          {goal.type === "WEIGHT" ? <WeightGoalSection userId={user.id} timezone={user.timezone} goalId={goal.id} /> : null}
+
           {goal.type === "MILESTONES" ? (
             <MilestoneList key={milestones.map((m) => m.id + m.done).join()} goalId={goal.id} initial={milestones} />
           ) : null}
@@ -143,6 +148,42 @@ export default async function GoalPage({ params }: PageProps<"/objetivos/[id]">)
           ) : null}
         </div>
       </PageBody>
+    </>
+  );
+}
+
+/** Objetivo «Peso»: hitos automáticos, gráfico de la tendencia y acceso a Comida → Peso. */
+async function WeightGoalSection({ userId, timezone, goalId }: { userId: string; timezone: string; goalId: string }) {
+  const data = await weightPageData({ id: userId, timezone });
+  const g = data.goal?.id === goalId ? data.goal : null;
+  return (
+    <>
+      {g ? (
+        <section className="card p-4">
+          <h2 className="font-semibold">Camino</h2>
+          <p className="mb-2 text-sm text-muted">
+            {formatKg(g.start)} → {data.current != null ? formatKg(data.current) : "—"} → {formatKg(g.target)} kg · según la tendencia
+          </p>
+          {data.series.length > 1 ? <WeightChart series={data.series} target={g.target} today={data.today} eta={g.achieved ? null : g.eta} /> : null}
+          {g.milestones.length ? (
+            <ul className="mt-3 space-y-1.5">
+              {g.milestones.map((m) => (
+                <li key={m.id} className="flex items-center gap-2 text-[15px]">
+                  <span className={`flex size-6 items-center justify-center rounded-full text-[13px] ${m.reached ? "bg-success text-success-fg" : "bg-surface-2 text-muted"}`}>
+                    {m.reached ? "✓" : ""}
+                  </span>
+                  <span className={m.reached ? "" : "text-muted"}>
+                    {m.label} · {formatKg(m.kg)} kg
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
+      ) : null}
+      <Link href="/comida/peso" className="btn btn-secondary w-full">
+        ⚖️ Registrar peso y ver la tendencia
+      </Link>
     </>
   );
 }

@@ -21,6 +21,7 @@ export type VictimIds = {
   water: string;
   meal: string;
   favorite: string;
+  weight: string;
   userId: string;
   pushEndpoint: string;
 };
@@ -77,6 +78,8 @@ export const FOREIGN_ID_ATTACKS: Attack[] = [
   { method: "POST", route: "/api/nutrition/meals/[id]/estimate", path: (v) => `/api/nutrition/meals/${v.meal}/estimate`, body: () => ({ correction: "otra cosa" }), expect: NOT_FOUND },
   { method: "GET", route: "/api/nutrition/photos/[kind]/[id]", path: (v) => `/api/nutrition/photos/meal/${v.meal}`, expect: NOT_FOUND },
   { method: "GET", route: "/api/nutrition/photos/[kind]/[id]", path: (v) => `/api/nutrition/photos/favorite/${v.favorite}`, expect: NOT_FOUND, note: "habitual" },
+  { method: "PATCH", route: "/api/nutrition/weights/[id]", path: (v) => `/api/nutrition/weights/${v.weight}`, body: () => ({ kg: 50 }), expect: NOT_FOUND },
+  { method: "DELETE", route: "/api/nutrition/weights/[id]", path: (v) => `/api/nutrition/weights/${v.weight}`, expect: NOT_FOUND },
   { method: "DELETE", route: "/api/nutrition/favorites/[id]", path: (v) => `/api/nutrition/favorites/${v.favorite}`, expect: NOT_FOUND },
   { method: "POST", route: "/api/nutrition/favorites/[id]/log", path: (v) => `/api/nutrition/favorites/${v.favorite}/log`, body: () => ({}), expect: NOT_FOUND },
   // B no es admin: el panel no existe para él.
@@ -119,6 +122,7 @@ export const SELF_ENDPOINTS: Pick<Attack, "method" | "route">[] = [
   { method: "POST", route: "/api/nutrition/water" },
   { method: "POST", route: "/api/nutrition/meals" },
   { method: "PATCH", route: "/api/nutrition/settings" },
+  { method: "POST", route: "/api/nutrition/weights" },
   { method: "PUT", route: "/api/nutrition/targets" },
   { method: "POST", route: "/api/onboarding" },
   { method: "POST", route: "/api/push/subscribe" },
