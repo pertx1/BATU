@@ -4,6 +4,8 @@ import { requireOnboardedUser } from "@/lib/auth/session";
 import { capitalize, formatTz, greeting, todayStr } from "@/lib/dates";
 import { getTodayData } from "@/lib/data/today";
 import { getAntolaToday } from "@/lib/data/antola";
+import { getFoodToday } from "@/lib/data/nutrition";
+import { FoodTodayCard } from "@/components/nutrition/food-today-card";
 import { AntolaToday } from "@/components/antola/antola-today";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { HabitRow } from "@/components/habits/habit-card";
@@ -20,7 +22,7 @@ export default async function TodayPage() {
   const now = new Date();
   const today = todayStr(user.timezone, now);
   const data = await getTodayData(user.id, user.timezone, today);
-  const antola = await getAntolaToday(user, today, data, now);
+  const [antola, food] = await Promise.all([getAntolaToday(user, today, data, now), getFoodToday(user.id, today)]);
   const hello = `${greeting(now, user.timezone)}${user.name ? `, ${user.name}` : ""}`;
   const date = capitalize(formatTz(now, user.timezone, "EEEE, d 'de' MMMM"));
   const pendingToday = data.tasks.filter((t) => !t.completedAt).length + data.overdue.length;
@@ -60,6 +62,7 @@ export default async function TodayPage() {
               <ChevronRight size={18} className="text-muted" />
             </Link>
           ) : null}
+          {food ? <FoodTodayCard data={food} /> : null}
         </div>
 
         {data.overdue.length ? (

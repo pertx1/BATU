@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, CheckSquare, Flame, Sun, Target } from "lucide-react";
+import { CalendarDays, CheckSquare, Sun, Target, Utensils } from "lucide-react";
 
 const TABS = [
   { href: "/", label: "Hoy", icon: Sun },
   { href: "/tareas", label: "Tareas", icon: CheckSquare },
   { href: "/calendario", label: "Calendario", icon: CalendarDays },
-  { href: "/habitos", label: "Hábitos", icon: Flame },
+  { href: "/comida", label: "Comida", icon: Utensils },
   { href: "/objetivos", label: "Objetivos", icon: Target },
 ];
 

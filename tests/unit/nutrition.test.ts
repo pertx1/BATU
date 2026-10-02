@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { addDays } from "@/lib/dates";
+import { formatLiters, formatWater, logStreak, mealTypeForMinutes, remaining, sumTotals } from "@/lib/nutrition/meals";
 import {
   bmi,
   bmr,
@@ -126,5 +128,42 @@ describe("tendencia de peso", () => {
     expect(t[0].trend).toBe(80);
     expect(t[1].trend).toBeCloseTo(80.15, 2);
     expect(Math.abs(t[2].trend - 80)).toBeLessThan(0.3);
+  });
+});
+
+describe("diario de comidas", () => {
+  it("sugiere el tipo de comida según la hora", () => {
+    const at = (h: number, m = 0) => mealTypeForMinutes(h * 60 + m);
+    expect(at(8)).toBe("BREAKFAST");
+    expect(at(11, 30)).toBe("MIDMORNING");
+    expect(at(14, 20)).toBe("LUNCH");
+    expect(at(18)).toBe("SNACK");
+    expect(at(21, 15)).toBe("DINNER");
+    expect(at(23, 30)).toBe("NIBBLE");
+    expect(at(3)).toBe("NIBBLE");
+  });
+
+  it("cuenta la racha de días registrando (hoy aún vacío no la rompe)", () => {
+    expect(logStreak(["2026-10-02", "2026-10-01", "2026-09-30"], "2026-10-02", addDays)).toBe(3);
+    expect(logStreak(["2026-10-01", "2026-09-30"], "2026-10-02", addDays)).toBe(2);
+    expect(logStreak(["2026-09-30"], "2026-10-02", addDays)).toBe(0);
+    expect(logStreak(["2026-10-02", "2026-09-30"], "2026-10-02", addDays)).toBe(1);
+  });
+
+  it("pasarse del objetivo se muestra como «por encima», sin error", () => {
+    expect(remaining(1500, 2000)).toEqual({ value: 500, over: false, ratio: 0.75 });
+    expect(remaining(2300, 2000)).toMatchObject({ value: 300, over: true });
+    expect(remaining(0, 0).ratio).toBe(0);
+  });
+
+  it("suma los totales y formatea el agua", () => {
+    const t = sumTotals([
+      { kcal: 500, proteinG: 30, carbsG: 50, fatG: 20, fiberG: 5 },
+      { kcal: 250, proteinG: 10.5, carbsG: 20, fatG: 8, fiberG: 2 },
+    ]);
+    expect(t).toEqual({ kcal: 750, proteinG: 40.5, carbsG: 70, fatG: 28, fiberG: 7 });
+    expect(formatWater(750)).toBe("750 ml");
+    expect(formatWater(1250)).toBe("1,25 L");
+    expect(formatLiters(2000)).toBe("2");
   });
 });

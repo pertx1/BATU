@@ -29,6 +29,7 @@ export default async function HabitsPage() {
     <>
       <PageHeader
         title="Hábitos"
+        back="/menu"
         subtitle={todays.length ? `${doneCount} de ${todays.length} hechos hoy` : undefined}
         right={
           <Link href="/habitos/nuevo" aria-label="Nuevo hábito" className="glass flex size-11 items-center justify-center rounded-full text-fg">

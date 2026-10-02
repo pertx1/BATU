@@ -9,16 +9,16 @@ import { NUTRIENT } from "@/lib/nutrition/nutrients";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { Ring } from "@/components/nutrition/ring";
 
-export const metadata: Metadata = { title: "Comida" };
+export const metadata: Metadata = { title: "Ajustes de nutrición" };
 
-export default async function FoodPage() {
+export default async function FoodSettingsPage() {
   const user = await requireOnboardedUser();
   const profile = await db.nutritionProfile.findUnique({ where: { userId: user.id } });
   if (!profile) redirect("/nutricion/bienvenida");
 
   return (
     <>
-      <PageHeader title="Comida" />
+      <PageHeader title="Ajustes de nutrición" back="/comida" />
       <PageBody>
         <div className="card flex items-center gap-4 p-5">
           <div className="flex-1">
@@ -56,7 +56,7 @@ export default async function FoodPage() {
           <Info size={16} className="mt-0.5 shrink-0" />
           Son estimaciones orientativas y no sustituyen a un profesional de la salud.
         </p>
-        <p className="mt-6 text-center text-sm text-muted">El diario de comidas, el agua y el peso llegan en las próximas fases.</p>
+        <p className="mt-6 text-center text-sm text-muted">El resto de ajustes (objetivos a mano, IA, vaso y botella, avisos…) llegan en la fase 4.</p>
       </PageBody>
     </>
   );

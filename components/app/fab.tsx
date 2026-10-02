@@ -19,8 +19,8 @@ export function Fab() {
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // En formularios de creación el "+" sobra.
-  if (pathname.endsWith("/nueva") || pathname.endsWith("/nuevo")) return null;
+  // En formularios de creación el "+" sobra. En Comida va el suyo (FoodFab).
+  if (pathname.endsWith("/nueva") || pathname.endsWith("/nuevo") || pathname.startsWith("/comida")) return null;
 
   async function save(e: React.FormEvent | null, as: "task" | "idea" = "task") {
     e?.preventDefault();
