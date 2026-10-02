@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { notFound, parseBody, withUser } from "@/lib/api";
+import { award } from "@/lib/gamification";
 import { cleanFoods, foodInputSchema } from "@/lib/nutrition/estimate";
 import { MEAL_TYPES } from "@/lib/nutrition/meals";
 import { deleteMeal, updateMeal } from "@/lib/nutrition/meal-service";
@@ -19,13 +20,16 @@ const schema = z.object({
 /** Corrige una comida: nombre, tipo, hora, hambre/saciedad o los alimentos. */
 export const PATCH = withUser<{ id: string }>(async (req, { user }, { id }) => {
   const body = await parseBody(req, schema);
-  const ok = await updateMeal(user, id, {
+  const day = await updateMeal(user, id, {
     ...body,
     type: body.type as never,
     foods: body.foods ? cleanFoods(body.foods) : undefined,
   });
-  if (!ok) throw notFound();
-  return NextResponse.json({ ok: true });
+  if (!day) throw notFound();
+  // Hambre/saciedad o alimentos nuevos pueden dar XP (nunca se quitan).
+  const touches = body.hungerBefore !== undefined || body.fullnessAfter !== undefined || body.foods !== undefined;
+  const gamification = touches ? await award(user, { type: "food", day, mealId: id }) : null;
+  return NextResponse.json({ ok: true, gamification });
 });
 
 /** Borra una comida (y su foto). */

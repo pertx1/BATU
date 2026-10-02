@@ -9,6 +9,7 @@ import { isScheduledOn } from "@/lib/habits";
 import { nextHabitReminderAt } from "@/lib/schedule";
 import { vapidConfig } from "@/lib/push";
 import { deliver } from "@/lib/notifications/deliver";
+import { runNutritionTick, type NutritionTickReport } from "@/lib/notifications/nutrition-tick";
 import {
   antolaEvening,
   antolaMissYou,
@@ -179,6 +180,7 @@ export type TickReport = {
   esperandoNoMolestar: number;
   descartados: number;
   dispositivosBorrados: number;
+  comida: NutritionTickReport | { error: string };
 };
 
 const PRIORITY_RANK: Record<Priority, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
@@ -562,7 +564,7 @@ export async function runTick(now: Date = new Date()): Promise<TickReport> {
   }
 
   // 7. Enviar y, a la vez, mover los próximos disparos.
-  const [delivery] = await Promise.all([
+  const [delivery, , , comida] = await Promise.all([
     vapid
       ? deliver(
           claimed.map((l) => ({ logId: l.id, userId: l.userId, payload: payloadOf.get(`${l.userId}|${l.key}`)! })),
@@ -571,6 +573,11 @@ export async function runTick(now: Date = new Date()): Promise<TickReport> {
       : null,
     advance(consumedTasks, consumedEvents, habitMoves, periodicMoves, vapid !== null),
     now.getUTCMinutes() === 0 ? housekeeping(now) : null,
+    // Agua y pesaje: aparte, para que un fallo no frene el resto de avisos.
+    runNutritionTick(now, vapid).catch((err: Error) => {
+      console.error("[antola] avisos de comida:", err);
+      return { error: err.message };
+    }),
   ]);
 
   return {
@@ -586,6 +593,7 @@ export async function runTick(now: Date = new Date()): Promise<TickReport> {
     esperandoNoMolestar: waiting,
     descartados: stale,
     dispositivosBorrados: delivery?.removedDevices ?? 0,
+    comida,
   };
 }
 

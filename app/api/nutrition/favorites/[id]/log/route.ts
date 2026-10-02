@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { notFound, parseBody, withUser } from "@/lib/api";
+import { award } from "@/lib/gamification";
 import { isDateStr, localMinutes, todayStr } from "@/lib/dates";
 import { logFavorite } from "@/lib/nutrition/meal-service";
 
@@ -12,10 +13,12 @@ const schema = z.object({
 /** Registra una comida habitual con un toque (sin volver a llamar a la IA). */
 export const POST = withUser<{ id: string }>(async (req, { user }, { id }) => {
   const body = await parseBody(req, schema);
+  const day = body.day ?? todayStr(user.timezone);
   const meal = await logFavorite(user, id, {
-    day: body.day ?? todayStr(user.timezone),
+    day,
     minutes: body.minutes ?? localMinutes(new Date(), user.timezone),
   });
   if (!meal) throw notFound();
-  return NextResponse.json({ id: meal.id }, { status: 201 });
+  const gamification = await award(user, { type: "food", day, mealId: meal.id });
+  return NextResponse.json({ id: meal.id, gamification }, { status: 201 });
 });

@@ -11,6 +11,28 @@ export const XP = {
   goal: 200,
 } as const;
 
+/**
+ * XP de Comida. Premian registrar y cuidarse (comidas apuntadas, agua,
+ * proteína, escucharse), nunca comer poco ni bajar rápido. Nunca se restan.
+ */
+export const FOOD_XP = {
+  mealsDay: 10, // al menos 3 comidas registradas en el día
+  water: 10, // objetivo de agua
+  protein: 10, // objetivo de proteína
+  hunger: 2, // hambre antes y saciedad después de una comida
+  weighIn: 5, // pesarse (una vez por semana)
+} as const;
+export const MEALS_FOR_XP = 3;
+export const MAX_HUNGER_XP_PER_DAY = 3;
+
+/**
+ * Solo dan XP los registros de hoy o de ayer (anti-trampas: apuntar días
+ * antiguos no suma). Se puede seguir apuntando cualquier día, sin XP.
+ */
+export function foodXpDay(day: DateStr, today: DateStr, yesterday: DateStr): boolean {
+  return day === today || day === yesterday;
+}
+
 /** Menos de esto entre crear y completar una tarea = 1 XP (anti-trampas). */
 export const QUICK_TASK_MS = 2 * 60 * 1000;
 export const QUICK_TASK_XP = 1;

@@ -2,10 +2,14 @@ import "server-only";
 import { db } from "@/lib/db";
 import { HttpError } from "@/lib/api";
 import { addDays, dateStrToDb, dbToDateStr, todayStr, type DateStr } from "@/lib/dates";
-import { award, type Reward } from "@/lib/gamification";
+import { antolaSay, antolaSettings, award, type Reward } from "@/lib/gamification";
+import type { MessageVars } from "@/lib/antola/messages";
 import { goalProgress } from "@/lib/goals";
-import { bmi } from "@/lib/nutrition/calc";
-import { projection, reachedTarget, weeklyRate, weightMilestones, weightSummary } from "@/lib/nutrition/weight";
+import { bmi, formatKg } from "@/lib/nutrition/calc";
+import { losingTooFast, projection, reachedTarget, weeklyRate, weightMilestones, weightSummary } from "@/lib/nutrition/weight";
+
+/** Kilos de cambio en la tendencia (desde el último cálculo) a partir de los que se propone recalcular. */
+export const RECALC_KG = 2;
 
 type User = { id: string; timezone: string };
 
@@ -25,6 +29,12 @@ export async function weighIns(userId: string, today: DateStr) {
  * «desconsigue» después: no se resta nada).
  */
 export async function syncWeightGoal(user: User, now = new Date()): Promise<Reward | null> {
+  const achievedId = await syncWeightGoalStatus(user, now);
+  return achievedId ? award(user, { type: "goal", goalId: achievedId, achieved: true }) : null;
+}
+
+/** Actualiza el objetivo «Peso» con la tendencia. Devuelve su id si se acaba de conseguir. */
+async function syncWeightGoalStatus(user: User, now: Date): Promise<string | null> {
   const profile = await db.nutritionProfile.findUnique({ where: { userId: user.id }, select: { goalId: true } });
   if (!profile?.goalId) return null;
   const goal = await db.goal.findFirst({ where: { id: profile.goalId, userId: user.id, type: "WEIGHT" } });
@@ -37,7 +47,7 @@ export async function syncWeightGoal(user: User, now = new Date()): Promise<Rewa
     where: { id: goal.id, userId: user.id },
     data: { currentValue: current, ...(achieve ? { status: "ACHIEVED", achievedAt: now } : {}) },
   });
-  return achieve ? award(user, { type: "goal", goalId: goal.id, achieved: true }) : null;
+  return achieve ? goal.id : null;
 }
 
 function checkDay(day: DateStr, today: DateStr) {
@@ -54,7 +64,9 @@ export async function saveWeighIn(user: User, day: DateStr, kg: number, now = ne
     update: { kg: Math.round(kg * 10) / 10 },
     select: { id: true },
   });
-  return { id: log.id, gamification: await syncWeightGoal(user, now) };
+  // Un solo premio: el pesaje (una vez por semana), los hitos y, si toca, el objetivo conseguido.
+  const goalAchievedId = await syncWeightGoalStatus(user, now);
+  return { id: log.id, gamification: await award(user, { type: "food", day, weighIn: true, goalAchievedId }, now) };
 }
 
 /** Corrige un pesaje (kilos o día). null si no es del usuario. */
@@ -120,5 +132,35 @@ export async function weightPageData(user: User, now = new Date()) {
       : null,
     bmi: profile && s.current != null ? bmi(s.current, profile.heightCm) : null,
     reminder: profile ? (REMINDER[profile.weighInPerWeek] ?? null) : null,
+  };
+}
+
+export type FoodNudges = {
+  /** Antola propone recalcular: la tendencia se ha movido 2 kg o más desde el último cálculo. */
+  recalc: { text: string; diffKg: number; weightAtCalc: number } | null;
+  /** Antola recomienda ir más despacio (más de un 1 % por semana dos semanas seguidas). */
+  slowDown: { text: string } | null;
+};
+
+/** Sugerencias de Antola para Comida y Peso (nunca juzgan el peso ni el cuerpo). */
+export async function foodNudges(user: User, now = new Date()): Promise<FoodNudges> {
+  const today = todayStr(user.timezone, now);
+  const [profile, logs, settings] = await Promise.all([
+    db.nutritionProfile.findUnique({ where: { userId: user.id }, select: { weightAtCalc: true, manualTargets: true } }),
+    weighIns(user.id, today),
+    antolaSettings(user.id),
+  ]);
+  if (!profile) return { recalc: null, slowDown: null };
+  const { series, current } = weightSummary(logs, today);
+  const diff = current == null ? 0 : Math.round((current - profile.weightAtCalc) * 10) / 10;
+  const say = (situation: "recalcular" | "ir_despacio", vars: MessageVars) =>
+    antolaSay(user.id, situation, vars, settings.antolaTone, { stable: true, now }).then((s) => s.text);
+  const [recalc, slowDown] = await Promise.all([
+    !profile.manualTargets && Math.abs(diff) >= RECALC_KG ? say("recalcular", { kg: formatKg(Math.abs(diff)) }) : null,
+    losingTooFast(series, today) ? say("ir_despacio", {}) : null,
+  ]);
+  return {
+    recalc: recalc ? { text: recalc, diffKg: diff, weightAtCalc: profile.weightAtCalc } : null,
+    slowDown: slowDown ? { text: slowDown } : null,
   };
 }

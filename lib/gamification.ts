@@ -32,7 +32,9 @@ import {
   type Situation,
 } from "@/lib/antola/messages";
 import { ACCESSORY_IDS, SHOP_BY_ID } from "@/lib/antola/shop";
-import { crumbsForXp, closeStreak, isDayComplete, isProductiveDay, MAX_SHIELDS, taskXp, XP } from "@/lib/antola/xp";
+import { crumbsForXp, closeStreak, FOOD_XP, foodXpDay, isDayComplete, isProductiveDay, MAX_HUNGER_XP_PER_DAY, MAX_SHIELDS, MEALS_FOR_XP, taskXp, XP } from "@/lib/antola/xp";
+import { logStreak } from "@/lib/nutrition/meals";
+import { progressKg, weightMilestones, weightSummary } from "@/lib/nutrition/weight";
 
 /**
  * Servicio central de la gamificación. TODO se calcula aquí, en el servidor, y
@@ -430,6 +432,37 @@ export function visibleStreak(stats: { currentStreak: number }, today: TodayStat
   return stats.currentStreak + (today.productive ? 1 : 0);
 }
 
+// ─── Objetivo de peso ───────────────────────────────────────────────────────
+
+/** El objetivo «Peso» con la tendencia actual y sus hitos (null si no hay). */
+async function weightGoalState(userId: string, tz: string, now: Date) {
+  const profile = await db.nutritionProfile.findUnique({ where: { userId }, select: { goalId: true } });
+  if (!profile?.goalId) return null;
+  const goal = await db.goal.findFirst({
+    where: { id: profile.goalId, userId, type: "WEIGHT" },
+    select: { id: true, startValue: true, targetValue: true, status: true },
+  });
+  if (!goal || goal.startValue == null || goal.targetValue == null) return null;
+  const today = todayStr(tz, now);
+  const logs = await db.weightLog.findMany({
+    where: { userId, day: { gte: dateStrToDb(addDays(today, -730)) } },
+    orderBy: { day: "asc" },
+    select: { day: true, kg: true },
+  });
+  const { current } = weightSummary(
+    logs.map((l) => ({ day: dbToDateStr(l.day), kg: l.kg })),
+    today,
+  );
+  return {
+    goalId: goal.id,
+    start: goal.startValue,
+    target: goal.targetValue,
+    current,
+    achieved: goal.status === "ACHIEVED",
+    milestones: weightMilestones(goal.startValue, goal.targetValue, current),
+  };
+}
+
 // ─── Logros ─────────────────────────────────────────────────────────────────
 
 export type UnlockedAchievement = { id: string; name: string; icon: string; description: string; crumbs: number; shields: number };
@@ -488,6 +521,27 @@ async function loadMetrics(userId: string, tz: string, now: Date, needs: Set<Met
           m.earlyTask = minutes.some((x) => x < 8 * 60);
           m.nightTask = minutes.some((x) => x < 5 * 60);
         }),
+    );
+  }
+  // Comida: rachas a partir de los XP diarios (solo existen los días que se ganaron).
+  const xpRun = (kind: XpKind) =>
+    db.xpEvent
+      .findMany({ where: { userId, kind }, orderBy: { day: "desc" }, take: 400, select: { day: true } })
+      .then((rows) => logStreak(rows.map((r) => dbToDateStr(r.day)), todayStr(tz, now), addDays));
+  if (need("waterRun")) jobs.push(xpRun("WATER_GOAL").then((n) => void (m.waterRun = n)));
+  if (need("proteinRun")) jobs.push(xpRun("PROTEIN_GOAL").then((n) => void (m.proteinRun = n)));
+  if (need("mealDays")) {
+    jobs.push(
+      db.mealLog.findMany({ where: { userId }, distinct: ["day"], select: { day: true }, take: 400 }).then((r) => void (m.mealDays = r.length)),
+    );
+  }
+  if (need("weightProgressKg") || need("weightHalf") || need("weightGoalAchieved")) {
+    jobs.push(
+      weightGoalState(userId, tz, now).then((w) => {
+        m.weightProgressKg = w ? progressKg(w.start, w.target, w.current) : 0;
+        m.weightHalf = !!w && (w.achieved || w.milestones.some((x) => x.reached && (x.id === "half" || x.label.includes("mitad"))));
+        m.weightGoalAchieved = !!w?.achieved;
+      }),
     );
   }
   await Promise.all(jobs);
@@ -680,6 +734,66 @@ export async function ensureAllWeekChallenges(now = new Date()) {
   }
 }
 
+// ─── Comida, agua y peso ────────────────────────────────────────────────────
+
+/**
+ * XP de Comida para un día (solo hoy o ayer). Cada premio se da una vez:
+ * 3 comidas, agua y proteína una vez al día; hambre y saciedad hasta 3
+ * comidas al día; el pesaje una vez por semana. Nunca se resta nada.
+ * Devuelve la situación con la que reacciona Antola (o null).
+ */
+async function foodXp(
+  tx: Tx,
+  userId: string,
+  event: Extract<RewardEvent, { type: "food" }>,
+  today: DateStr,
+  milestones: { id: string; label: string }[],
+  tz: string,
+  now: Date,
+): Promise<Situation | null> {
+  let reaction: Situation | null = null;
+  const react = (s: Situation) => (reaction ??= s);
+
+  // El objetivo de peso conseguido (lo celebran los logros «Objetivo conseguido» y «¡Lo conseguí!»).
+  if (event.goalAchievedId) await grant(tx, userId, "GOAL", event.goalAchievedId, XP.goal, 0, today);
+  if (!foodXpDay(event.day, today, addDays(today, -1))) return reaction;
+
+  if (event.weighIn) {
+    const weighed = await grant(tx, userId, "WEIGH_IN", startOfWeekMonday(event.day), FOOD_XP.weighIn, 0, event.day);
+    // Hitos del objetivo de peso: se celebran una sola vez (sin XP; los logros dan migas).
+    const w = await weightGoalState(userId, tz, now);
+    for (const m of w?.milestones ?? []) {
+      if (m.reached && (await grant(tx, userId, "MILESTONE", `peso:${w!.goalId}:${m.id}`, 0, 0, today))) milestones.push(m);
+    }
+    if (weighed) react("pesaje");
+    return reaction;
+  }
+
+  const profile = await tx.nutritionProfile.findUnique({ where: { userId }, select: { waterMl: true, proteinG: true } });
+  if (!profile) return reaction;
+  const day = dateStrToDb(event.day);
+  const [meals, water] = await Promise.all([
+    tx.mealLog.findMany({ where: { userId, day }, select: { id: true, status: true, proteinG: true, hungerBefore: true, fullnessAfter: true } }),
+    tx.waterLog.aggregate({ where: { userId, day }, _sum: { ml: true } }),
+  ]);
+  const protein = meals.filter((m) => m.status !== "PENDING").reduce((sum, m) => sum + m.proteinG, 0);
+  if (profile.proteinG > 0 && protein >= profile.proteinG && (await grant(tx, userId, "PROTEIN_GOAL", event.day, FOOD_XP.protein, 0, event.day))) {
+    react("proteina_objetivo");
+  }
+  if ((water._sum.ml ?? 0) >= profile.waterMl && (await grant(tx, userId, "WATER_GOAL", event.day, FOOD_XP.water, 0, event.day))) {
+    react("agua_objetivo");
+  }
+  if (meals.length >= MEALS_FOR_XP && (await grant(tx, userId, "MEALS_DAY", event.day, FOOD_XP.mealsDay, 0, event.day))) {
+    react("comidas_dia");
+  }
+  const meal = event.mealId ? meals.find((m) => m.id === event.mealId) : null;
+  if (meal?.hungerBefore != null && meal.fullnessAfter != null) {
+    const given = await tx.xpEvent.count({ where: { userId, kind: "HUNGER", day } });
+    if (given < MAX_HUNGER_XP_PER_DAY && (await grant(tx, userId, "HUNGER", meal.id, FOOD_XP.hunger, 0, event.day))) react("hambre_anotada");
+  }
+  return reaction;
+}
+
 // ─── award(): lo que llaman las acciones ────────────────────────────────────
 
 export type RewardEvent =
@@ -688,7 +802,15 @@ export type RewardEvent =
   | { type: "review"; weekStart: DateStr }
   | { type: "milestone"; milestoneId: string; done: boolean }
   | { type: "goal"; goalId: string; achieved: boolean }
-  | { type: "check"; inboxZero?: boolean }; // sin XP: solo logros (objetivo creado, compra…)
+  | { type: "check"; inboxZero?: boolean } // sin XP: solo logros (objetivo creado, compra…)
+  /**
+   * Comida, agua o peso de un día. Da los XP que toquen (una vez por día o
+   * semana) y nunca resta: borrar o corregir no quita nada.
+   */
+  | { type: "food"; day: DateStr; mealId?: string; weighIn?: boolean; goalAchievedId?: string | null };
+
+/** Celebración suelta (p. ej. un hito del objetivo de peso). */
+export type Celebration = { icon: string; title: string; text: string };
 
 export type Reward = {
   enabled: boolean;
@@ -704,6 +826,7 @@ export type Reward = {
   streak: number;
   reaction: string | null;
   levelUpText: string | null;
+  celebrations: Celebration[];
 };
 
 type UserRef = { id: string; timezone: string; name?: string | null };
@@ -733,6 +856,7 @@ async function awardUnsafe(user: UserRef, event: RewardEvent, now: Date): Promis
   let checkDay = false;
   let dayCompleted = false;
   let reactionSituation: Situation | null = null;
+  const reachedMilestones: { id: string; label: string }[] = [];
 
   await db.$transaction(
     async (tx) => {
@@ -791,6 +915,9 @@ async function awardUnsafe(user: UserRef, event: RewardEvent, now: Date): Promis
         case "check":
           ctx.inboxZero = !!event.inboxZero;
           break;
+        case "food":
+          reactionSituation = await foodXp(tx, userId, event, today, reachedMilestones, tz, now);
+          break;
       }
 
       // Bonus de "todo lo de hoy": se gana al completarlo y se pierde si se desmarca algo.
@@ -827,6 +954,23 @@ async function awardUnsafe(user: UserRef, event: RewardEvent, now: Date): Promis
           unlocked: Array.from({ length: afterStats.level - before.level }, (_, i) => unlocksAtLevel(before.level + 1 + i)).flat(),
         }
       : null;
+  // Hitos del peso que Antola celebra. Si un logro acaba de celebrar lo mismo
+  // («Primeros 2 kg», «Mitad del camino»), no se repite.
+  const got = new Set(achievements.map((a) => a.id));
+  if (reachedMilestones.length) {
+    const recent = await db.userAchievement.findMany({
+      where: { userId, achievementId: { in: ["primeros-2-kg", "mitad-del-camino"] }, unlockedAt: { gte: new Date(now.getTime() - 86_400_000) } },
+      select: { achievementId: true },
+    });
+    for (const a of recent) got.add(a.achievementId);
+  }
+  const celebrations: Celebration[] = reachedMilestones
+    .filter((m) => !(m.id === "2kg" && got.has("primeros-2-kg")) && !((m.id === "half" || m.label.includes("mitad")) && got.has("mitad-del-camino")))
+    .map((m) => ({
+      icon: "🏁",
+      title: "¡Hito conseguido!",
+      text: renderMessage(pickMessage("hito_peso", tone, []).text, { hito: m.label, nombre: user.name ?? null }),
+    }));
   const finalStats = achievements.length
     ? await db.userStats.findUniqueOrThrow({ where: { userId }, select: { crumbs: true } })
     : afterStats;
@@ -844,6 +988,7 @@ async function awardUnsafe(user: UserRef, event: RewardEvent, now: Date): Promis
     dayCompleted,
     streak: visibleStreak(afterStats, todayNow),
     reaction: reactionSituation ? renderMessage(pickMessage(reactionSituation, tone, []).text, { nombre: user.name ?? null }) : null,
+    celebrations,
     levelUpText: levelUp
       ? renderMessage(pickMessage("subida_nivel", tone, []).text, { nivel: levelUp.to, titulo: levelUp.title, nombre: user.name ?? null })
       : null,

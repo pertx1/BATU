@@ -109,3 +109,24 @@ export function formatChange(kg: number | null): string {
   const n = new Intl.NumberFormat("es-ES", { maximumFractionDigits: 1 }).format(Math.abs(kg));
   return `${kg > 0 ? "+" : "−"}${n} kg`;
 }
+
+/**
+ * ¿La tendencia ha bajado más de un 1 % del peso por semana durante las dos
+ * últimas semanas seguidas? Hace falta un pesaje de hace 14 días o más y
+ * otro de los últimos 4 días para saberlo.
+ */
+export function losingTooFast(series: TrendPoint[], today: string): boolean {
+  const sorted = [...series].sort((a, b) => a.day.localeCompare(b.day));
+  const last = sorted.at(-1);
+  if (!last || last.day < addDaysStr(today, -4)) return false;
+  const a = trendAt(sorted, addDaysStr(today, -14));
+  const b = trendAt(sorted, addDaysStr(today, -7));
+  if (a == null || b == null || a === b) return false;
+  return a - b > a * 0.01 && b - last.trend > b * 0.01;
+}
+
+/** Kilos avanzados hacia el objetivo (0 si la tendencia va al revés). */
+export function progressKg(start: number, target: number, current: number | null): number {
+  if (current == null) return 0;
+  return Math.max(0, target < start ? start - current : current - start);
+}

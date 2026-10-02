@@ -124,6 +124,7 @@ export const SELF_ENDPOINTS: Pick<Attack, "method" | "route">[] = [
   { method: "PATCH", route: "/api/nutrition/settings" },
   { method: "POST", route: "/api/nutrition/weights" },
   { method: "PUT", route: "/api/nutrition/targets" },
+  { method: "POST", route: "/api/nutrition/recalculate" },
   { method: "POST", route: "/api/onboarding" },
   { method: "POST", route: "/api/push/subscribe" },
   { method: "POST", route: "/api/push/test" },

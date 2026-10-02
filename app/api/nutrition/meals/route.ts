@@ -1,6 +1,7 @@
 import { after, NextResponse } from "next/server";
 import { z } from "zod";
 import { HttpError, withUser } from "@/lib/api";
+import { award } from "@/lib/gamification";
 import { isDateStr, localMinutes, todayStr } from "@/lib/dates";
 import { MEAL_TYPES } from "@/lib/nutrition/meals";
 import { createMeal, runEstimate } from "@/lib/nutrition/meal-service";
@@ -53,8 +54,9 @@ export const POST = withUser(async (req, { user }) => {
   }
 
   const hasManual = body.kcal !== undefined;
+  const day = body.day ?? todayStr(user.timezone);
   const meal = await createMeal(user, {
-    day: body.day ?? todayStr(user.timezone),
+    day,
     minutes: body.minutes ?? localMinutes(new Date(), user.timezone),
     type: (body.type as never) ?? null,
     description: body.description || null,
@@ -68,5 +70,6 @@ export const POST = withUser(async (req, { user }) => {
   if (meal.estimating) {
     after(() => runEstimate(user.id, meal.id, { description: body.description || null, photo }));
   }
-  return NextResponse.json({ id: meal.id, estimating: meal.estimating, notice: meal.notice }, { status: 201 });
+  const gamification = await award(user, { type: "food", day, mealId: meal.id });
+  return NextResponse.json({ id: meal.id, estimating: meal.estimating, notice: meal.notice, gamification }, { status: 201 });
 });

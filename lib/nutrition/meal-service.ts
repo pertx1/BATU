@@ -2,7 +2,8 @@ import "server-only";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { HttpError } from "@/lib/api";
-import { addDays, dateStrToDb, localMinutes, todayStr, zonedToUtc, type DateStr } from "@/lib/dates";
+import { addDays, dateStrToDb, dbToDateStr, DEFAULT_TZ, localMinutes, todayStr, zonedToUtc, type DateStr } from "@/lib/dates";
+import { award } from "@/lib/gamification";
 import { aiConfigured, DAILY_AI_LIMIT, EstimateError, estimateMeal } from "@/lib/nutrition/ai";
 import { exactFood, midpoints, readEstimate, totalsOf, type Estimate, type FoodItem } from "@/lib/nutrition/estimate";
 import { MEAL_TYPE_INFO, mealTypeForMinutes, type MealType, type Totals } from "@/lib/nutrition/meals";
@@ -108,7 +109,7 @@ export async function runEstimate(
 ) {
   try {
     const estimate = await estimateMeal({ description: input.description, image: input.photo, correction: input.correction });
-    const meal = await db.mealLog.findFirst({ where: { id: mealId, userId }, select: { name: true } });
+    const meal = await db.mealLog.findFirst({ where: { id: mealId, userId }, select: { name: true, day: true } });
     if (!meal) return; // la han borrado mientras tanto
     await db.mealLog.updateMany({
       where: { id: mealId, userId },
@@ -120,6 +121,9 @@ export async function runEstimate(
         ...midpoints(estimate),
       },
     });
+    // Con los números ya puestos, puede haber llegado a la proteína del día (los XP se ven al volver).
+    const tz = (await db.settings.findUnique({ where: { userId }, select: { timezone: true } }))?.timezone ?? DEFAULT_TZ;
+    await award({ id: userId, timezone: tz }, { type: "food", day: dbToDateStr(meal.day), mealId });
   } catch (err) {
     const message = err instanceof EstimateError ? err.message : "No he podido estimar esta comida. Inténtalo otra vez.";
     if (!(err instanceof EstimateError)) console.error("[antola] estimación:", err);
@@ -158,10 +162,10 @@ export type MealPatch = {
   foods?: FoodItem[];
 };
 
-/** Guarda los cambios del detalle. Devuelve false si la comida no es del usuario. */
+/** Guarda los cambios del detalle. Devuelve el día de la comida, o null si no es del usuario. */
 export async function updateMeal(user: { id: string; timezone: string }, mealId: string, patch: MealPatch, now = new Date()) {
   const meal = await db.mealLog.findFirst({ where: { id: mealId, userId: user.id } });
-  if (!meal) return false;
+  if (!meal) return null;
   if (patch.foods && meal.status === "PENDING") throw new HttpError(409, "Espera a que termine de analizarse");
   const data: Prisma.MealLogUpdateManyMutationInput = {};
   if (patch.name !== undefined) data.name = patch.name?.trim() || null;
@@ -191,7 +195,7 @@ export async function updateMeal(user: { id: string; timezone: string }, mealId:
     });
   }
   await db.mealLog.updateMany({ where: { id: mealId, userId: user.id }, data });
-  return true;
+  return dbToDateStr(meal.day);
 }
 
 /**

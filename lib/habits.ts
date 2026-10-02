@@ -112,3 +112,11 @@ export function habitDaysLabel(days: number[]): string {
   return WEEK_ORDER.filter((d) => days.includes(d)).map((d) => WEEKDAYS_SHORT[d]).join(" · ");
 }
 
+
+/** Hábitos sanos que se activan con un toque (desde Hábitos). */
+export const HEALTHY_HABITS = [
+  { name: "Verdura en la comida", emoji: "🥦", hint: "Un poco de verdura en la comida principal" },
+  { name: "Fruta en el día", emoji: "🍎", hint: "Al menos una pieza de fruta" },
+  { name: "Nada de picoteo después de cenar", emoji: "🌙", hint: "Cerrar la cocina después de la cena" },
+  { name: "Sin refrescos", emoji: "🚰", hint: "Agua, infusiones o café en su lugar" },
+] as const;

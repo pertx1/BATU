@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { Reward } from "@/lib/gamification";
 import type { AntolaLook } from "@/lib/gamification";
@@ -22,7 +23,8 @@ type Celebration =
   | { kind: "level"; reward: Reward }
   | { kind: "achievement"; achievement: Reward["achievements"][number] }
   | { kind: "challenge"; challenge: Reward["challenges"][number] }
-  | { kind: "day"; streak: number };
+  | { kind: "day"; streak: number }
+  | { kind: "custom"; item: Reward["celebrations"][number] };
 
 async function confetti(big = false) {
   try {
@@ -58,6 +60,9 @@ export function GamificationProvider({
   const nextId = useRef(0);
   const [currentLook, setLook] = useState(look);
   useEffect(() => setLook(look), [look]);
+  // Fuera de «Hoy» (allí ya habla en su bocadillo), Antola reacciona en una burbuja.
+  const pathname = usePathname();
+  const [bubble, setBubble] = useState<{ id: number; text: string } | null>(null);
 
   const onReward = useCallback(
     (reward: Reward) => {
@@ -69,6 +74,11 @@ export function GamificationProvider({
         setTimeout(() => setFloating((f) => f.filter((x) => x.id !== id)), 1200);
         if (sounds && reward.xp > 0) playSound("pop");
       }
+      if (reward.reaction && reward.xp > 0 && pathname !== "/") {
+        const id = nextId.current++;
+        setBubble({ id, text: reward.reaction });
+        setTimeout(() => setBubble((b) => (b?.id === id ? null : b)), 4000);
+      }
       const items: Celebration[] = [];
       if (reward.levelUp) {
         items.push({ kind: "level", reward });
@@ -77,9 +87,10 @@ export function GamificationProvider({
       for (const a of reward.achievements) items.push({ kind: "achievement", achievement: a });
       for (const c of reward.challenges) items.push({ kind: "challenge", challenge: c });
       if (reward.dayCompleted) items.push({ kind: "day", streak: reward.streak });
+      for (const item of reward.celebrations ?? []) items.push({ kind: "custom", item });
       if (items.length) setQueue((q) => [...q, ...items]);
     },
-    [sounds],
+    [sounds, pathname],
   );
 
   useEffect(() => {
@@ -118,6 +129,18 @@ export function GamificationProvider({
             </span>
           ))
         : null}
+      {enabled && bubble ? (
+        <div
+          key={bubble.id}
+          role="status"
+          className="fixed inset-x-0 z-[85] mx-auto flex max-w-sm items-center gap-2 px-4 animate-fade-up"
+          style={{ top: "calc(env(safe-area-inset-top) + 10px)" }}
+          onClick={() => setBubble(null)}
+        >
+          <Antola expression="celebrando" stage={currentLook.stage} accessories={currentLook.accessories} size={52} />
+          <p className="card flex-1 px-3.5 py-2.5 text-[15px] font-medium shadow-[0_8px_24px_rgb(0_0_0/0.15)]">{bubble.text}</p>
+        </div>
+      ) : null}
       {enabled && current ? (
         <CelebrationModal celebration={current} look={currentLook} onClose={() => setQueue((q) => q.slice(1))} />
       ) : null}
@@ -139,6 +162,8 @@ function describe(c: Celebration): string {
       return `Reto completado: ${c.challenge.label}`;
     case "day":
       return "Día completado";
+    case "custom":
+      return `${c.item.title} ${c.item.text}`;
   }
 }
 
@@ -190,6 +215,10 @@ function CelebrationModal({ celebration: c, look, onClose }: { celebration: Cele
         </p>
       );
       break;
+    case "custom":
+      title = `${c.item.icon} ${c.item.title}`;
+      text = c.item.text;
+      break;
     case "day":
       title = "¡Día completado!";
       text = c.streak > 1 ? `Todo hecho. Llevas ${c.streak} días de racha. 🔥` : "Todo lo de hoy, hecho. +25 XP de bonus.";
@@ -206,7 +235,7 @@ function CelebrationModal({ celebration: c, look, onClose }: { celebration: Cele
         <p className="mt-1 text-muted">{text}</p>
         {extra}
         <div className="mt-5 flex gap-2">
-          {c.kind !== "day" ? (
+          {c.kind !== "day" && c.kind !== "custom" ? (
             <Link href="/antola" onClick={onClose} className="btn btn-secondary flex-1">
               Ver
             </Link>

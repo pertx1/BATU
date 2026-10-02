@@ -3,7 +3,13 @@ import { addDays, startOfWeekMonday } from "@/lib/dates";
 import { bestStreak, consistencyGrid, daysForAverage, hungerAnalysis, lastDays, macroSplit, parseRange, slotForMinutes, toBars, type HungerEntry } from "@/lib/nutrition/analysis";
 import { midpoints, normalizeEstimate } from "@/lib/nutrition/estimate";
 import { sniffImage } from "@/lib/nutrition/photo";
-import { formatChange, projection, reachedTarget, weeklyRate, weightMilestones, weightSummary } from "@/lib/nutrition/weight";
+import { formatChange, losingTooFast, progressKg, projection, reachedTarget, weeklyRate, weightMilestones, weightSummary } from "@/lib/nutrition/weight";
+import { expectedWater, nextWaterCheck, nextWeighInAt, shouldRemindWater } from "@/lib/nutrition/reminders";
+import { FOOD_XP, foodXpDay } from "@/lib/antola/xp";
+import { MESSAGES } from "@/lib/antola/messages";
+import { ACHIEVEMENTS } from "@/lib/antola/achievements";
+import { HEALTHY_HABITS } from "@/lib/habits";
+import { formatInTimeZone } from "date-fns-tz";
 import { formatLiters, formatWater, logStreak, mealTypeForMinutes, remaining, sumTotals } from "@/lib/nutrition/meals";
 import {
   bmi,
@@ -338,5 +344,104 @@ describe("análisis", () => {
   it("hambre y saciedad: estable si no hay nada destacable", () => {
     const flat: HungerEntry[] = Array.from({ length: 6 }, (_, i) => ({ type: i % 2 ? "LUNCH" : "DINNER", minutes: i % 2 ? 14 * 60 : 21 * 60, hunger: 3, fullness: 3 }));
     expect(hungerAnalysis(flat, 30).insights).toEqual(["Tu hambre y tu saciedad se mantienen bastante parecidas de una comida a otra."]);
+  });
+});
+
+describe("XP y logros de comida", () => {
+  it("solo dan XP los registros de hoy o de ayer", () => {
+    expect(foodXpDay("2026-10-02", "2026-10-02", "2026-10-01")).toBe(true);
+    expect(foodXpDay("2026-10-01", "2026-10-02", "2026-10-01")).toBe(true);
+    expect(foodXpDay("2026-09-20", "2026-10-02", "2026-10-01")).toBe(false);
+  });
+
+  it("los XP de comida son los del enunciado", () => {
+    expect(FOOD_XP).toEqual({ mealsDay: 10, water: 10, protein: 10, hunger: 2, weighIn: 5 });
+  });
+
+  it("los seis logros de comida y peso existen", () => {
+    const ids = ACHIEVEMENTS.map((a) => a.id);
+    for (const id of ["gota-a-gota", "diario-constante", "proteina-al-dia", "primeros-2-kg", "mitad-del-camino", "objetivo-peso"]) expect(ids).toContain(id);
+    const base = { waterRun: 0, proteinRun: 0, mealDays: 0, weightProgressKg: 0, weightHalf: false, weightGoalAchieved: false };
+    const got = (m: Partial<typeof base>) =>
+      ACHIEVEMENTS.filter((a) => a.needs.every((n) => n in base) && a.test({ ...base, ...m } as never)).map((a) => a.id);
+    expect(got({ waterRun: 7 })).toEqual(["gota-a-gota"]);
+    expect(got({ waterRun: 6, proteinRun: 7 })).toEqual(["proteina-al-dia"]);
+    expect(got({ mealDays: 30 })).toEqual(["diario-constante"]);
+    expect(got({ weightProgressKg: 2 })).toEqual(["primeros-2-kg"]);
+  });
+
+  it("los kilos de progreso siguen la dirección del objetivo", () => {
+    expect(progressKg(90, 80, 87.5)).toBeCloseTo(2.5);
+    expect(progressKg(90, 80, 91)).toBe(0);
+    expect(progressKg(60, 66, 62.4)).toBeCloseTo(2.4);
+    expect(progressKg(60, 66, null)).toBe(0);
+  });
+
+  it("las frases de comida, agua y peso nunca juzgan", () => {
+    const food = ["comidas_dia", "agua_objetivo", "proteina_objetivo", "hambre_anotada", "pesaje", "hito_peso", "recalcular", "ir_despacio", "noti_agua", "noti_pesaje"] as const;
+    for (const s of food) {
+      expect(MESSAGES[s].length, s).toBeGreaterThan(1);
+      for (const m of MESSAGES[s]) expect(m.text, m.id).not.toMatch(/pasad|demasiad|exceso|culpa|gord|mal\b|engord|cuidado con/i);
+    }
+  });
+
+  it("hábitos sanos predefinidos", () => {
+    expect(HEALTHY_HABITS.map((h) => h.name)).toEqual(["Verdura en la comida", "Fruta en el día", "Nada de picoteo después de cenar", "Sin refrescos"]);
+  });
+});
+
+describe("ir más despacio", () => {
+  const pt = (day: string, trend: number) => ({ day, kg: trend, trend });
+  it("avisa si baja más de un 1 % por semana dos semanas seguidas", () => {
+    const fast = [pt("2026-09-10", 100.4), pt("2026-09-17", 100), pt("2026-09-24", 98.6), pt("2026-10-01", 97.4)];
+    expect(losingTooFast(fast, "2026-10-02")).toBe(true);
+  });
+  it("no avisa si una de las dos semanas va a buen ritmo", () => {
+    const ok = [pt("2026-09-15", 100), pt("2026-09-25", 99.5), pt("2026-10-01", 98.2)];
+    expect(losingTooFast(ok, "2026-10-02")).toBe(false);
+  });
+  it("no avisa sin datos suficientes o recientes", () => {
+    expect(losingTooFast([pt("2026-09-25", 100), pt("2026-10-01", 97)], "2026-10-02")).toBe(false);
+    expect(losingTooFast([pt("2026-09-01", 100), pt("2026-09-10", 97), pt("2026-09-20", 94)], "2026-10-02")).toBe(false);
+  });
+  it("subir de peso nunca activa el aviso", () => {
+    expect(losingTooFast([pt("2026-09-15", 60), pt("2026-09-25", 62), pt("2026-10-01", 64)], "2026-10-02")).toBe(false);
+  });
+});
+
+describe("recordatorios de agua y pesaje", () => {
+  const tz = "Europe/Madrid";
+  const local = (d: Date) => formatInTimeZone(d, tz, "EEE yyyy-MM-dd HH:mm");
+
+  it("agua esperada: reparto entre despertar y dormir", () => {
+    expect(expectedWater(2000, 450, 450, 1380)).toBe(0);
+    expect(expectedWater(2000, 915, 450, 1380)).toBe(1000);
+    expect(expectedWater(2000, 1400, 450, 1380)).toBe(2000);
+  });
+
+  it("solo recuerda si va por detrás al menos un vaso, dentro de sus horas", () => {
+    const base = { wake: 450, sleep: 1380, target: 2000, glass: 250 };
+    expect(shouldRemindWater({ ...base, minutes: 915, drunk: 500 })).toBe(true); // tocaba 1 L
+    expect(shouldRemindWater({ ...base, minutes: 915, drunk: 800 })).toBe(false); // menos de un vaso de diferencia
+    expect(shouldRemindWater({ ...base, minutes: 500, drunk: 0 })).toBe(false); // recién despierto
+    expect(shouldRemindWater({ ...base, minutes: 1370, drunk: 0 })).toBe(false); // a punto de dormir
+    expect(shouldRemindWater({ ...base, minutes: 1000, drunk: 2000 })).toBe(false); // ya llegó
+  });
+
+  it("después de un aviso, 2 horas; si no, media hora; de noche, al día siguiente", () => {
+    const at = (iso: string) => new Date(iso);
+    expect(local(nextWaterCheck({ reminded: true, wake: 450, sleep: 1380, tz, now: at("2026-10-02T10:00:00Z") }))).toBe("Fri 2026-10-02 14:00");
+    expect(local(nextWaterCheck({ reminded: false, wake: 450, sleep: 1380, tz, now: at("2026-10-02T10:00:00Z") }))).toBe("Fri 2026-10-02 12:30");
+    expect(local(nextWaterCheck({ reminded: true, wake: 450, sleep: 1380, tz, now: at("2026-10-02T19:00:00Z") }))).toBe("Sat 2026-10-03 09:30");
+    expect(local(nextWaterCheck({ reminded: false, wake: 450, sleep: 1380, tz, now: at("2026-10-02T04:00:00Z") }))).toBe("Fri 2026-10-02 09:30");
+  });
+
+  it("pesaje: los días elegidos, 15 minutos después de despertar", () => {
+    const now = new Date("2026-10-02T10:00:00Z"); // viernes
+    expect(local(nextWeighInAt(1, 450, tz, now)!)).toBe("Mon 2026-10-05 07:45");
+    expect(local(nextWeighInAt(2, 450, tz, now)!)).toBe("Mon 2026-10-05 07:45");
+    expect(local(nextWeighInAt(3, 420, tz, new Date("2026-10-05T10:00:00Z"))!)).toBe("Wed 2026-10-07 07:15");
+    expect(local(nextWeighInAt(2, 450, tz, new Date("2026-10-05T10:00:00Z"))!)).toBe("Thu 2026-10-08 07:45");
+    expect(nextWeighInAt(0, 450, tz, now)).toBeNull();
   });
 });

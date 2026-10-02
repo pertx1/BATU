@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { HttpError, parseBody, withUser } from "@/lib/api";
 import { dateStrToDb, isDateStr, todayStr } from "@/lib/dates";
+import { award } from "@/lib/gamification";
 
 const schema = z.object({
   ml: z.number().int().min(10, "Cantidad no válida").max(3000, "Cantidad no válida"),
@@ -18,5 +19,6 @@ export const POST = withUser(async (req, { user }) => {
   if (day > today) throw new HttpError(400, "No se puede apuntar agua en un día futuro");
   const log = await db.waterLog.create({ data: { userId: user.id, day: dateStrToDb(day), ml: body.ml }, select: { id: true } });
   const sum = await db.waterLog.aggregate({ where: { userId: user.id, day: dateStrToDb(day) }, _sum: { ml: true } });
-  return NextResponse.json({ id: log.id, totalMl: sum._sum.ml ?? 0 }, { status: 201 });
+  const gamification = await award(user, { type: "food", day });
+  return NextResponse.json({ id: log.id, totalMl: sum._sum.ml ?? 0, gamification }, { status: 201 });
 });

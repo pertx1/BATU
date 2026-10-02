@@ -45,7 +45,18 @@ export type Situation =
   | "noti_racha"
   | "noti_te_echo"
   | "noti_logro"
-  | "noti_reto";
+  | "noti_reto"
+  // Comida, agua y peso: nunca juzgan lo que comes, tu cuerpo ni tu peso.
+  | "comidas_dia"
+  | "agua_objetivo"
+  | "proteina_objetivo"
+  | "hambre_anotada"
+  | "pesaje"
+  | "hito_peso"
+  | "recalcular"
+  | "ir_despacio"
+  | "noti_agua"
+  | "noti_pesaje";
 
 /** Expresión de Antola en cada situación. */
 export const SITUATION_EXPRESSION: Partial<Record<Situation, Expression>> = {
@@ -67,6 +78,14 @@ export const SITUATION_EXPRESSION: Partial<Record<Situation, Expression>> = {
   revision_buena: "orgullosa",
   revision_floja: "feliz",
   revision_pendientes: "pensativa",
+  comidas_dia: "celebrando",
+  agua_objetivo: "celebrando",
+  proteina_objetivo: "celebrando",
+  hambre_anotada: "feliz",
+  pesaje: "feliz",
+  hito_peso: "celebrando",
+  recalcular: "pensativa",
+  ir_despacio: "pensativa",
 };
 
 const L = "LIVELY" as const;
@@ -210,6 +229,9 @@ export const MESSAGES: Record<Situation, Message[]> = {
     { id: "co10", text: "Consejo: un día es productivo con todos tus hábitos hechos o 3 tareas completadas." },
     { id: "co11", text: "Consejo: los retos de la semana cambian cada lunes. Míralos en mi pantalla." },
     { id: "co12", text: "Consejo: en Estadísticas puedes ver cómo te ha ido el último mes." },
+    { id: "co13", text: "Consejo: guarda como «comida habitual» lo que comes a menudo y lo apuntarás con un toque." },
+    { id: "co14", text: "Consejo: en Comida → Peso, lo que cuenta es la línea de tendencia, no el pesaje de un día." },
+    { id: "co15", text: "Consejo: anotar el hambre antes de comer y la saciedad después te ayuda a escucharte." },
   ],
   subida_nivel: [
     { id: "sn1", tone: L, text: "¡Nivel {nivel}! Ahora eres {titulo}. ¡Estoy flipando!" },
@@ -290,10 +312,93 @@ export const MESSAGES: Record<Situation, Message[]> = {
     { id: "nx1", tone: L, text: "¡Reto completado: {reto}! {xp}" },
     { id: "nx2", tone: C, text: "Reto completado: {reto}. {xp}" },
   ],
+  comidas_dia: [
+    { id: "cd1", tone: L, text: "¡Tres comidas apuntadas! Tu diario está al día. 📒" },
+    { id: "cd2", tone: L, text: "¡Diario completito! Así da gusto llevar la cuenta." },
+    { id: "cd3", tone: L, text: "¡Bien apuntado! Cada registro te ayuda a conocerte mejor." },
+    { id: "cd4", tone: C, text: "Tres comidas apuntadas. Buen registro." },
+    { id: "cd5", tone: C, text: "Tu diario de hoy está al día." },
+  ],
+  agua_objetivo: [
+    { id: "ag1", tone: L, text: "¡Objetivo de agua conseguido! 💧 Tus células te aplauden." },
+    { id: "ag2", tone: L, text: "¡Glu, glu, conseguido! Hoy te has hidratado de maravilla. 💧" },
+    { id: "ag3", tone: L, text: "¡Agua del día completada! Hasta yo me siento más fresca." },
+    { id: "ag4", tone: C, text: "Objetivo de agua conseguido. 💧" },
+    { id: "ag5", tone: C, text: "Hoy has bebido lo que te tocaba. Bien." },
+  ],
+  proteina_objetivo: [
+    { id: "pr1", tone: L, text: "¡Proteína del día conseguida! 💪 Tus músculos lo agradecen." },
+    { id: "pr2", tone: L, text: "¡Objetivo de proteína! Hoy has comido con fuerza." },
+    { id: "pr3", tone: C, text: "Has llegado a tu proteína de hoy. 💪" },
+    { id: "pr4", tone: C, text: "Objetivo de proteína conseguido." },
+  ],
+  hambre_anotada: [
+    { id: "ha1", tone: L, text: "¡Gracias por anotarlo! Escucharte es un superpoder." },
+    { id: "ha2", tone: L, text: "¡Apuntado! Con estos datos te contaré qué vas notando." },
+    { id: "ha3", tone: C, text: "Anotado. Escucharte ayuda mucho." },
+    { id: "ha4", tone: C, text: "Gracias por apuntar cómo te sentías." },
+  ],
+  pesaje: [
+    { id: "pe1", tone: L, text: "¡Pesaje apuntado! Recuerda: manda la tendencia, no un día suelto." },
+    { id: "pe2", tone: L, text: "¡Apuntado! Yo me encargo de la línea de tendencia. 📈" },
+    { id: "pe3", tone: C, text: "Pesaje apuntado. Lo que cuenta es la tendencia." },
+    { id: "pe4", tone: C, text: "Apuntado. Un día suelto no dice mucho; la tendencia sí." },
+  ],
+  hito_peso: [
+    { id: "hp1", tone: L, text: "¡Hito conseguido: {hito}! Paso a paso, como buena hormiga. 🐜" },
+    { id: "hp2", tone: L, text: "¡{hito}! Esto hay que celebrarlo. 🎉" },
+    { id: "hp3", tone: C, text: "Has llegado a un hito: {hito}. Bien hecho." },
+    { id: "hp4", tone: C, text: "Hito conseguido: {hito}. Sigue a tu ritmo." },
+  ],
+  recalcular: [
+    { id: "rc1", tone: L, text: "Tu peso ha cambiado {kg} kg desde el último cálculo. ¿Recalculamos tus objetivos para que sigan encajando contigo?" },
+    { id: "rc2", tone: C, text: "Desde el último cálculo tu peso ha cambiado {kg} kg. Puedes recalcular tus objetivos para ajustarlos." },
+  ],
+  ir_despacio: [
+    {
+      id: "id1",
+      tone: L,
+      text: "Llevas dos semanas bajando algo más rápido de lo que recomiendo. Con calma se cuida mejor el músculo y la energía: ¿probamos un ritmo más suave o comer un poquito más?",
+    },
+    {
+      id: "id2",
+      tone: C,
+      text: "Las dos últimas semanas has bajado más de un 1 % por semana. Ir más despacio ayuda a cuidar el músculo y la energía; puedes elegir un ritmo más suave o comer un poco más.",
+    },
+  ],
+  noti_agua: [
+    { id: "na1", tone: L, text: "¡Un vasito de agua! 💧 Llevas {agua} de {objetivo}." },
+    { id: "na2", tone: L, text: "¡Hora de hidratarse! Llevas {agua} de {objetivo}." },
+    { id: "na3", tone: L, text: "Psst… ¿un trago de agua? Vas por {agua} de {objetivo}." },
+    { id: "na4", tone: C, text: "Buen momento para beber agua. Llevas {agua} de {objetivo}." },
+    { id: "na5", tone: C, text: "Un recordatorio para beber. Vas por {agua} de {objetivo}." },
+  ],
+  noti_pesaje: [
+    { id: "np1", tone: L, text: "¡Buenos días! Hoy toca pesarse. Mejor ahora, antes de desayunar." },
+    { id: "np2", tone: L, text: "¡Día de báscula! Un momento y lo apuntamos juntas." },
+    { id: "np3", tone: C, text: "Hoy toca pesarse. Mejor por la mañana, antes de desayunar." },
+    { id: "np4", tone: C, text: "Recordatorio: hoy es día de pesaje." },
+  ],
 };
 
 export type MessageVars = Partial<Record<
-  "nombre" | "tareas" | "tarea" | "racha" | "habitos" | "vencidas" | "nivel" | "titulo" | "logro" | "reto" | "completadas" | "pendientes" | "xp",
+  | "nombre"
+  | "tareas"
+  | "tarea"
+  | "racha"
+  | "habitos"
+  | "vencidas"
+  | "nivel"
+  | "titulo"
+  | "logro"
+  | "reto"
+  | "completadas"
+  | "pendientes"
+  | "xp"
+  | "agua"
+  | "objetivo"
+  | "hito"
+  | "kg",
   string | number | null
 >>;
 

@@ -20,6 +20,13 @@ export type AchievementMetrics = {
   earlyTask: boolean; // alguna tarea completada antes de las 8:00
   nightTask: boolean; // alguna tarea completada entre las 0:00 y las 5:00
   inboxZero: boolean; // la última acción dejó la bandeja a cero
+  // Comida y peso (nunca premian comer poco ni bajar rápido).
+  waterRun: number; // días seguidos llegando al objetivo de agua
+  proteinRun: number; // días seguidos llegando a la proteína
+  mealDays: number; // días con alguna comida registrada
+  weightProgressKg: number; // kilos avanzados hacia el objetivo de peso (tendencia)
+  weightHalf: boolean; // mitad del camino del objetivo de peso
+  weightGoalAchieved: boolean; // objetivo de peso conseguido
 };
 
 export type MetricKey = keyof AchievementMetrics;
@@ -217,6 +224,60 @@ export const ACHIEVEMENTS: Achievement[] = [
     reward: { crumbs: 15 },
     needs: ["tasksToday"],
     test: (m) => m.tasksToday >= 10,
+  },
+  {
+    id: "gota-a-gota",
+    name: "Gota a gota",
+    description: "7 días seguidos llegando a tu objetivo de agua.",
+    icon: "💧",
+    reward: { crumbs: 15 },
+    needs: ["waterRun"],
+    test: (m) => m.waterRun >= 7,
+  },
+  {
+    id: "diario-constante",
+    name: "Diario constante",
+    description: "Registra tus comidas durante 30 días.",
+    icon: "📒",
+    reward: { crumbs: 30 },
+    needs: ["mealDays"],
+    test: (m) => m.mealDays >= 30,
+  },
+  {
+    id: "proteina-al-dia",
+    name: "Proteína al día",
+    description: "7 días seguidos llegando a tu proteína.",
+    icon: "💪",
+    reward: { crumbs: 15 },
+    needs: ["proteinRun"],
+    test: (m) => m.proteinRun >= 7,
+  },
+  {
+    id: "primeros-2-kg",
+    name: "Primeros 2 kg",
+    description: "Avanza 2 kg hacia tu objetivo de peso (según la tendencia).",
+    icon: "⚖️",
+    reward: { crumbs: 15 },
+    needs: ["weightProgressKg"],
+    test: (m) => m.weightProgressKg >= 2,
+  },
+  {
+    id: "mitad-del-camino",
+    name: "Mitad del camino",
+    description: "Llega a la mitad de tu objetivo de peso.",
+    icon: "🛤️",
+    reward: { crumbs: 20 },
+    needs: ["weightHalf"],
+    test: (m) => m.weightHalf,
+  },
+  {
+    id: "objetivo-peso",
+    name: "Objetivo conseguido",
+    description: "Llega a tu objetivo de peso.",
+    icon: "🎯",
+    reward: { crumbs: 40, shields: 1 },
+    needs: ["weightGoalAchieved"],
+    test: (m) => m.weightGoalAchieved,
   },
 ];
 

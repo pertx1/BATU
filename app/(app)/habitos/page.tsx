@@ -6,6 +6,7 @@ import { todayStr } from "@/lib/dates";
 import { lastNDays, listHabitViews } from "@/lib/data/habits";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { HabitRow } from "@/components/habits/habit-card";
+import { HealthyHabits } from "@/components/habits/healthy-habits";
 import { EmptyState, SectionTitle } from "@/components/ui/controls";
 
 export const metadata: Metadata = { title: "Hábitos" };
@@ -61,6 +62,7 @@ export default async function HabitsPage() {
             ) : null}
           </>
         )}
+        <HealthyHabits existing={habits.map((h) => h.name)} />
       </PageBody>
     </>
   );
