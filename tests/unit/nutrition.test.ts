@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { addDays } from "@/lib/dates";
+import { addDays, startOfWeekMonday } from "@/lib/dates";
+import { bestStreak, consistencyGrid, daysForAverage, hungerAnalysis, lastDays, macroSplit, parseRange, slotForMinutes, toBars, type HungerEntry } from "@/lib/nutrition/analysis";
 import { midpoints, normalizeEstimate } from "@/lib/nutrition/estimate";
 import { sniffImage } from "@/lib/nutrition/photo";
 import { formatChange, projection, reachedTarget, weeklyRate, weightMilestones, weightSummary } from "@/lib/nutrition/weight";
@@ -246,5 +247,96 @@ describe("peso", () => {
     expect(reachedTarget(82, 76.9, 77)).toBe(true);
     expect(reachedTarget(60, 63.9, 64)).toBe(false);
     expect(formatChange(-0.44)).toBe("−0,4 kg");
+  });
+});
+
+describe("análisis", () => {
+  it("elige el periodo (7 días por defecto)", () => {
+    expect(parseRange("30").days).toBe(30);
+    expect(parseRange("90").days).toBe(90);
+    expect(parseRange("x").days).toBe(7);
+    expect(parseRange(undefined).days).toBe(7);
+  });
+
+  it("calcula la mejor racha", () => {
+    const days = ["2026-09-01", "2026-09-02", "2026-09-03", "2026-09-10", "2026-09-11"];
+    expect(bestStreak(days, addDays)).toBe(3);
+    expect(bestStreak([], addDays)).toBe(0);
+  });
+
+  it("las medias no cuentan hoy salvo que sea el único día", () => {
+    expect(daysForAverage(["2026-10-01", "2026-10-02"], "2026-10-02")).toEqual(["2026-10-01"]);
+    expect(daysForAverage(["2026-10-02"], "2026-10-02")).toEqual(["2026-10-02"]);
+  });
+
+  it("agrupa por semanas con muchos días y deja huecos sin datos", () => {
+    const days = lastDays("2026-10-02", 90, addDays);
+    expect(days).toHaveLength(90);
+    expect(days.at(-1)).toBe("2026-10-02");
+    const bars = toBars(days, (d) => (d === "2026-09-29" ? 2000 : d === "2026-09-30" ? 1000 : null), "2026-10-02", startOfWeekMonday);
+    expect(bars.every((b) => b.weekly)).toBe(true);
+    const week = bars.find((b) => b.key === "2026-09-28")!;
+    expect(week.value).toBe(1500);
+    expect(week.partial).toBe(true);
+    expect(bars.filter((b) => b.value != null)).toHaveLength(1);
+    const daily = toBars(lastDays("2026-10-02", 7, addDays), () => 5, "2026-10-02", startOfWeekMonday);
+    expect(daily).toHaveLength(7);
+    expect(daily.at(-1)!.partial).toBe(true);
+  });
+
+  it("reparte las calorías entre macros sumando 100", () => {
+    const s = macroSplit({ proteinG: 100, carbsG: 200, fatG: 50 })!;
+    expect(s.protein + s.fat + s.carbs).toBe(100);
+    expect(s.protein).toBe(24); // 400 de 1650
+    expect(macroSplit({ proteinG: 0, carbsG: 0, fatG: 0 })).toBeNull();
+  });
+
+  it("monta 13 semanas de lunes a domingo y marca el futuro", () => {
+    const grid = consistencyGrid("2026-10-02", 13, new Map([["2026-10-01", 5]]), addDays, startOfWeekMonday);
+    expect(grid).toHaveLength(13);
+    expect(grid[0][0].day).toBe("2026-07-06");
+    const last = grid.at(-1)!;
+    expect(last[0].day).toBe("2026-09-28");
+    expect(last[3]).toMatchObject({ day: "2026-10-01", meals: 5, level: 3 });
+    expect(last[4].future).toBe(false);
+    expect(last[5].future).toBe(true);
+  });
+
+  it("franjas horarias", () => {
+    expect(slotForMinutes(8 * 60)).toBe("MORNING");
+    expect(slotForMinutes(14 * 60)).toBe("MIDDAY");
+    expect(slotForMinutes(18 * 60)).toBe("AFTERNOON");
+    expect(slotForMinutes(22 * 60)).toBe("NIGHT");
+    expect(slotForMinutes(2 * 60)).toBe("NIGHT");
+  });
+
+  const entries: HungerEntry[] = [
+    ...Array.from({ length: 4 }, () => ({ type: "DINNER" as const, minutes: 21 * 60, hunger: 5, fullness: 4 })),
+    ...Array.from({ length: 4 }, () => ({ type: "BREAKFAST" as const, minutes: 8 * 60, hunger: 2, fullness: 2 })),
+    { type: "LUNCH", minutes: 14 * 60, hunger: null, fullness: null },
+  ];
+
+  it("hambre y saciedad: sin frases hasta las dos semanas", () => {
+    const a = hungerAnalysis(entries, 5);
+    expect(a.count).toBe(8);
+    expect(a.daysToInsights).toBe(9);
+    expect(a.insights).toEqual([]);
+    expect(a.byType.map((r) => r.type)).toEqual(["BREAKFAST", "DINNER"]);
+    expect(a.byType[1]).toMatchObject({ hunger: 5, fullness: 4, count: 4 });
+  });
+
+  it("hambre y saciedad: frases neutras con dos semanas de datos", () => {
+    const a = hungerAnalysis(entries, 20);
+    expect(a.daysToInsights).toBe(0);
+    expect(a.insights[0]).toBe("Sueles llegar con más hambre a la cena (5,0 de 5).");
+    expect(a.insights.some((t) => t.startsWith("Después del desayuno"))).toBe(true);
+    expect(a.insights.some((t) => t.startsWith("Por la noche"))).toBe(true);
+    // Nunca juzga: nada de «demasiado», «mal» ni «te has pasado».
+    for (const t of a.insights) expect(t).not.toMatch(/demasiad|mal |pasad|exceso|culpa/i);
+  });
+
+  it("hambre y saciedad: estable si no hay nada destacable", () => {
+    const flat: HungerEntry[] = Array.from({ length: 6 }, (_, i) => ({ type: i % 2 ? "LUNCH" : "DINNER", minutes: i % 2 ? 14 * 60 : 21 * 60, hunger: 3, fullness: 3 }));
+    expect(hungerAnalysis(flat, 30).insights).toEqual(["Tu hambre y tu saciedad se mantienen bastante parecidas de una comida a otra."]);
   });
 });
