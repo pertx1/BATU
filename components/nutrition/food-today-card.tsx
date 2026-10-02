@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Camera, ChevronRight, GlassWater, Plus } from "lucide-react";
+import { ChevronRight, GlassWater, PenLine, Plus } from "lucide-react";
 import type { FoodToday } from "@/lib/data/nutrition";
 import { formatLiters, remaining } from "@/lib/nutrition/meals";
 import { NUTRIENT } from "@/lib/nutrition/nutrients";
@@ -52,11 +52,11 @@ export function FoodTodayCard({ data }: { data: FoodToday }) {
           <Plus size={16} strokeWidth={2.6} /> 1 vaso
         </button>
         <Link
-          href="/comida?anadir=foto"
+          href="/comida?anadir=texto"
           className="flex size-10 shrink-0 items-center justify-center rounded-full bg-fg text-bg"
-          aria-label="Registrar una comida con foto"
+          aria-label="Describir una comida"
         >
-          <Camera size={19} />
+          <PenLine size={19} />
         </Link>
       </div>
     </div>

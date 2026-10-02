@@ -359,7 +359,7 @@ export function MealList({ diary }: { diary: Diary }) {
             🍽️
           </p>
           <p className="mt-2 font-semibold">{diary.day === diary.today ? "Aún no has registrado nada hoy" : "No hay nada registrado este día"}</p>
-          <p className="mt-1 text-[15px] text-muted">Toca + para hacer una foto o describir lo que comes.</p>
+          <p className="mt-1 text-[15px] text-muted">Toca + y describe lo que comes: la IA calcula las calorías y los macros.</p>
         </div>
       )}
       <MealDetail meal={open} hideNumbers={diary.hideNumbers} aiAvailable={diary.aiAvailable} onClose={() => setOpenId(null)} />

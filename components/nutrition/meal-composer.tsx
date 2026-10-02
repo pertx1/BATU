@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Camera, ImagePlus, Sparkles, X } from "lucide-react";
+import { useRef, useState } from "react";
+import { Sparkles } from "lucide-react";
 import { MEAL_TYPE_INFO, MEAL_TYPES, mealTypeForMinutes, type MealType } from "@/lib/nutrition/meals";
 import { MicButton } from "@/components/ui/mic-button";
 
@@ -28,22 +28,16 @@ const nowMinutes = () => {
 const toHHMM = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 
 /**
- * Formulario para registrar una comida: foto (opcional), descripción
- * (cómoda para dictar), tipo sugerido por la hora, hora y hambre antes.
+ * Formulario para registrar una comida: descripción (cómoda para dictar),
+ * tipo sugerido por la hora, hora y hambre antes. La IA calcula el resto.
  */
 export function MealComposer({
-  photo,
   aiAvailable,
   saving,
-  onPickPhoto,
-  onRemovePhoto,
   onSubmit,
 }: {
-  photo: Blob | null;
   aiAvailable: boolean;
   saving: boolean;
-  onPickPhoto: (source: "camera" | "gallery") => void;
-  onRemovePhoto: () => void;
   onSubmit: (r: ComposerResult) => void;
 }) {
   const [description, setDescription] = useState("");
@@ -53,10 +47,7 @@ export function MealComposer({
   const [hunger, setHunger] = useState<number | null>(null);
   const [manual, setManual] = useState({ kcal: "", proteinG: "", carbsG: "", fatG: "" });
   const textRef = useRef<HTMLTextAreaElement>(null);
-  const preview = useMemo(() => (photo ? URL.createObjectURL(photo) : null), [photo]);
-  useEffect(() => () => (preview ? URL.revokeObjectURL(preview) : undefined), [preview]);
-
-  const canSave = !saving && (!!photo || description.trim().length >= 3) && (aiAvailable || manual.kcal !== "");
+  const canSave = !saving && description.trim().length >= 3 && (aiAvailable || manual.kcal !== "");
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -73,43 +64,16 @@ export function MealComposer({
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      {preview ? (
-        <div className="relative overflow-hidden rounded-2xl bg-surface-2">
-          <img src={preview} alt="Foto de la comida" className="max-h-64 w-full object-cover" />
-          <button
-            type="button"
-            onClick={onRemovePhoto}
-            className="absolute right-2 top-2 flex size-9 items-center justify-center rounded-full bg-black/55 text-white"
-            aria-label="Quitar la foto"
-          >
-            <X size={18} />
-          </button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 gap-2">
-          <button type="button" className="btn btn-secondary text-fg" onClick={() => onPickPhoto("camera")}>
-            <Camera size={20} /> Foto
-          </button>
-          <button type="button" className="btn btn-secondary text-fg" onClick={() => onPickPhoto("gallery")}>
-            <ImagePlus size={20} /> Galería
-          </button>
-        </div>
-      )}
-
       <div>
         <label htmlFor="meal-description" className="label">
-          {photo ? "Añade lo que no se ve (opcional)" : "¿Qué has comido?"}
+          ¿Qué has comido?
         </label>
         <div className="relative">
           <textarea
             id="meal-description"
             ref={textRef}
             className="input min-h-[96px] resize-none pr-14"
-            placeholder={
-              photo
-                ? "Ej.: con una cucharada de aceite, repetí, sin salsa…"
-                : "Ej.: plato de lentejas con chorizo, un trozo de pan y un yogur natural"
-            }
+            placeholder="Ej.: plato de lentejas con chorizo, un trozo de pan y un yogur natural"
             value={description}
             onChange={(e) => setDescription(e.target.value.slice(0, 1000))}
             autoCapitalize="sentences"
@@ -122,6 +86,9 @@ export function MealComposer({
             <MicButton value={description} onChange={(t) => setDescription(t.slice(0, 1000))} field={textRef} />
           </div>
         </div>
+        {aiAvailable ? (
+          <p className="mt-1.5 text-[13px] text-muted">Cuanto más detalle (cantidades, cómo está cocinado, el aceite…), mejor calcula la IA.</p>
+        ) : null}
       </div>
 
       <div>

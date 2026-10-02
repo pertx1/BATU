@@ -45,6 +45,6 @@ export function FoodTabs() {
 }
 
 /** Abre la hoja de «+» de Comida (la escucha FoodFab). */
-export function openFoodSheet(action: "menu" | "camera" | "gallery" | "text" = "menu") {
+export function openFoodSheet(action: "menu" | "text" | "favorites" | "water" = "menu") {
   window.dispatchEvent(new CustomEvent("antola:food-add", { detail: action }));
 }

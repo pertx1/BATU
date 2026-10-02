@@ -15,8 +15,8 @@ interfaz está en español.
 - **Objetivos**: numéricos (con gráfica de evolución), por hitos, por tareas vinculadas o de
   peso (sigue la tendencia de los pesajes).
 - **Comida**: plan personal (TMB, gasto diario, calorías, macros, fibra y agua) con límites de
-  seguridad; **Diario** con anillos de calorías y macros, agua y comidas registradas con foto
-  o texto y estimadas con IA (rangos, corrección, comidas habituales, hambre y saciedad);
+  seguridad; **Diario** con anillos de calorías y macros, agua y comidas que se describen
+  con texto (o dictando) y estima la IA (rangos, corrección, comidas habituales, hambre y saciedad);
   **Análisis** (calorías, macros, agua, constancia, hambre) y **Peso** (tendencia, objetivo,
   hitos, proyección e historial).
 - **Antola**: la hormiga que acompaña. XP, niveles, migas, logros, retos semanales, tienda de
@@ -29,7 +29,7 @@ interfaz está en español.
 
 **Stack**: Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Prisma 6 + PostgreSQL
 (Supabase) · date-fns + date-fns-tz · web-push (VAPID) · Resend · recharts · Anthropic SDK
-(estimación de comidas) · Cloudflare R2 con el SDK de S3 (fotos) · Vercel (o Render).
+(estimación de comidas) · Vercel (o Render).
 
 ---
 
@@ -43,7 +43,7 @@ interfaz está en español.
 6. [Despliegue en Render (alternativa)](#6-despliegue-en-render-alternativa)
 7. [Programar los avisos con cron-job.org](#7-programar-los-avisos-con-cron-joborg)
 8. [Emails con Resend](#8-emails-con-resend)
-9. [Comida: IA (Anthropic) y fotos (Cloudflare R2)](#9-comida-ia-anthropic-y-fotos-cloudflare-r2)
+9. [Comida: estimación con IA (Anthropic)](#9-comida-estimación-con-ia-anthropic)
 10. [Instalar en el iPhone y activar las notificaciones](#10-instalar-en-el-iphone-y-activar-las-notificaciones)
 11. [Administración](#11-administración)
 12. [Seguridad](#12-seguridad)
@@ -63,7 +63,7 @@ interfaz está en español.
 5. Crea en **cron-job.org** una llamada cada minuto a `/api/cron/tick?key=…` ([§7](#7-programar-los-avisos-con-cron-joborg)).
 6. Instálala en el iPhone y activa las notificaciones ([§10](#10-instalar-en-el-iphone-y-activar-las-notificaciones)).
 7. (Opcional) Configura Resend para recuperar contraseñas ([§8](#8-emails-con-resend)).
-8. (Opcional) Configura la IA y las fotos de Comida ([§9](#9-comida-ia-anthropic-y-fotos-cloudflare-r2)).
+8. Pon la clave de la IA de Comida ([§9](#9-comida-estimación-con-ia-anthropic)).
 
 ## 2. Variables de entorno
 
@@ -83,16 +83,12 @@ marca **Production, Preview y Development** y vuelve a desplegar después de cam
 | `ALLOW_SIGNUP` | No | `true` (por defecto): registro abierto. `false`: cerrado. | `true` |
 | `RESEND_API_KEY` | Para emails | API key de Resend ([§8](#8-emails-con-resend)). **Secreta.** | `re_…` |
 | `EMAIL_FROM` | Para emails | Remitente, con un dominio verificado en Resend. | `Antola <no-reply@tudominio.com>` |
-| `ANTHROPIC_API_KEY` | Para la IA | Estimación de calorías y macros de las comidas ([§9](#9-comida-ia-anthropic-y-fotos-cloudflare-r2)). **Secreta.** | `sk-ant-…` |
+| `ANTHROPIC_API_KEY` | Para la IA | Estimación de calorías y macros de las comidas ([§9](#9-comida-estimación-con-ia-anthropic)). **Secreta.** | `sk-ant-…` |
 | `ANTHROPIC_MODEL` | No | Modelo para estimar. Por defecto `claude-haiku-4-5-20251001`. | `claude-haiku-4-5-20251001` |
-| `R2_ACCOUNT_ID` | Para fotos | ID de la cuenta de Cloudflare. | `a1b2c3…` |
-| `R2_ACCESS_KEY_ID` | Para fotos | Access Key ID del token de R2. | `f3e…` |
-| `R2_SECRET_ACCESS_KEY` | Para fotos | Secret Access Key del token de R2. **Secreta.** | `9d1…` |
-| `R2_BUCKET` | Para fotos | Nombre del bucket (privado). | `antola` |
 
 Sin las variables de avisos la app funciona igual, pero no envía notificaciones; sin las de
 email, «He olvidado mi contraseña» no llega a enviar el correo. Sin `ANTHROPIC_API_KEY`, las
-comidas se apuntan con sus valores a mano; sin las de R2, se describen con texto (sin foto).
+comidas se apuntan con sus valores a mano.
 `/api/salud` dice qué variables están puestas (nunca sus valores).
 
 ## 3. Claves VAPID y CRON_SECRET
@@ -195,41 +191,25 @@ envía dos veces el mismo aviso. Con Vercel también se puede usar *Vercel Cron*
 
 El email de recuperación lleva un enlace que **caduca en 1 hora** y **solo sirve una vez**.
 
-## 9. Comida: IA (Anthropic) y fotos (Cloudflare R2)
+## 9. Comida: estimación con IA (Anthropic)
 
-Las dos cosas son opcionales: sin ellas, Comida funciona apuntando los valores a mano o
-describiendo la comida con texto.
+Las comidas se registran **describiéndolas con texto** (o dictando con el micrófono) y la IA
+calcula las calorías, la proteína, los carbohidratos, la grasa y la fibra. No se usan fotos.
 
-**Estimación con IA (Anthropic)**
 1. En [console.anthropic.com](https://console.anthropic.com) → **API Keys → Create Key**.
    Cópiala en `ANTHROPIC_API_KEY` (solo en el servidor: nunca llega al navegador).
-2. En **Billing**, añade saldo y pon un **límite de gasto mensual**.
+2. En **Billing**, añade saldo y pon un **límite de gasto mensual** (Settings → Limits).
 3. (Opcional) `ANTHROPIC_MODEL` para otro modelo. Por defecto, `claude-haiku-4-5-20251001`,
    rápido y barato.
+4. Redespliega y comprueba en `/api/salud` que aparece la variable.
 
 - Cada persona tiene un máximo de **20 estimaciones al día**; después puede seguir apuntando
   a mano. Se puede desactivar en *Comida → Ajustes*.
 - La IA devuelve cada alimento con **rangos** (mínimo y máximo) y su confianza; la app guarda
   la estimación completa y los puntos medios para sumar. Se puede corregir («era media
-  ración») y vuelve a estimar.
+  ración») y vuelve a estimar, o cambiar la ración de cada alimento.
 - Lo que escribe el usuario se trata como datos, nunca como instrucciones para la IA.
-
-**Fotos (Cloudflare R2)**
-1. En Cloudflare → **R2 → Create bucket** (p. ej. `antola`). Déjalo **privado**: sin acceso
-   público ni dominio propio.
-2. **R2 → Manage API tokens → Create API token** con permiso **Object Read & Write** solo para
-   ese bucket. Copia el *Access Key ID* y el *Secret Access Key*.
-3. El *Account ID* está en la portada de R2.
-4. Pon `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` y `R2_BUCKET` y redespliega.
-   Comprueba en `/api/salud` que aparecen.
-
-- El móvil reduce la foto (máx. 1280 px, WebP o JPEG) y le quita los metadatos (GPS
-  incluido) antes de subirla. El servidor comprueba que es una imagen real (máx. 5 MB).
-- Se guardan en `users/{userId}/meals/{id}` y solo se ven a través de
-  `/api/nutrition/photos/…`, que comprueba la sesión y que la foto es tuya. No hay enlaces
-  públicos.
-- Borrar una comida borra su foto; borrar la cuenta borra **todo** lo que hay en
-  `users/{userId}/` antes de borrar los datos.
+- Sin la clave, Comida funciona igual poniendo los valores a mano.
 
 **Cálculos y límites de salud**
 - TMB con Mifflin-St Jeor, gasto diario con el factor de actividad y 7700 kcal por kg para el
@@ -288,10 +268,9 @@ cualquier otra cuenta, `/admin` responde 404.
   (`lib/data/ownership.ts`).
 
 **Datos de salud (Comida y Peso)**
-- Perfil, comidas, fotos, agua y pesajes son privados de cada cuenta, entran en «Exportar mis
-  datos» (las fotos, como enlaces que solo funcionan con tu sesión) y se borran al eliminar la
-  cuenta, fotos de R2 incluidas.
-- Las claves de Anthropic y R2 solo existen en el servidor.
+- Perfil, comidas, agua y pesajes son privados de cada cuenta, entran en «Exportar mis
+  datos» y se borran al eliminar la cuenta.
+- La clave de Anthropic solo existe en el servidor.
 
 **Sesiones y acceso**
 - Contraseñas con bcrypt. Sesiones en la BD; en la cookie solo va un token aleatorio cuyo
@@ -378,7 +357,7 @@ app/(app)/         pantallas de la app (exigen sesión y haber completado la bie
 app/api/           endpoints (withUser / withPublic en lib/api.ts)
 lib/data/          consultas a la BD, siempre filtradas por userId
 lib/notifications/ programador de avisos (timing, textos, envío, tick, agua y pesaje)
-lib/nutrition/     Comida: cálculos, estimación con IA, fotos (R2), peso, análisis
+lib/nutrition/     Comida: cálculos, estimación con IA, peso, análisis
 lib/antola/        Antola: XP, niveles, logros, retos, tienda y frases
 lib/auth/          sesiones, contraseñas, límites de intentos, recuperación, admin
 proxy.ts           redirige al login si no hay cookie (la sesión se valida en el servidor)
@@ -427,7 +406,5 @@ has pesado.
 | El cron responde `401` | `key` distinta de `CRON_SECRET` | Copia de nuevo la clave en cron-job.org |
 | No llega el email de recuperación | Falta Resend o el dominio no está verificado | [§8](#8-emails-con-resend); mira también el spam |
 | «Demasiados intentos» | Bloqueo por fallos de login | Espera 15 minutos o recupera la contraseña |
-| «Las fotos aún no están configuradas» | Faltan las variables de R2 | [§9](#9-comida-ia-anthropic-y-fotos-cloudflare-r2) y comprueba `/api/salud` |
-| «La estimación con IA no está configurada» | Falta `ANTHROPIC_API_KEY` | [§9](#9-comida-ia-anthropic-y-fotos-cloudflare-r2) |
+| «La estimación con IA no está configurada» | Falta `ANTHROPIC_API_KEY` | [§9](#9-comida-estimación-con-ia-anthropic) |
 | Las comidas quedan «sin estimar» con un aviso | Clave sin saldo, límite de gasto o modelo no disponible | Revisa Billing y Limits en la consola de Anthropic |
-| «No se han podido borrar tus fotos» al borrar la cuenta | R2 no responde o el token no tiene permiso de borrado | Token con *Object Read & Write*; inténtalo de nuevo (no se borra nada hasta que funcione) |

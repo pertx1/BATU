@@ -4,7 +4,6 @@ import { db } from "@/lib/db";
 import { todayStr } from "@/lib/dates";
 import { foodStreak } from "@/lib/data/nutrition";
 import { aiConfigured } from "@/lib/nutrition/ai";
-import { photosConfigured } from "@/lib/nutrition/r2";
 import { PageHeader } from "@/components/app/page-header";
 import { FoodHeaderButtons } from "@/components/nutrition/food-header-buttons";
 import { FoodTabs } from "@/components/nutrition/food-tabs";
@@ -35,7 +34,6 @@ export default async function FoodLayout({ children }: { children: React.ReactNo
         glassMl={profile.glassMl}
         bottleMl={profile.bottleMl}
         aiAvailable={profile.aiEnabled && aiConfigured()}
-        photosAvailable={photosConfigured()}
         hideNumbers={profile.hideNumbers}
         favorites={favorites.map((f) => ({ id: f.id, name: f.name, type: f.type ?? "LUNCH", kcal: f.kcal, hasPhoto: !!f.photoKey }))}
       />

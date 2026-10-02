@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CupSoda, GlassWater, Plus, X } from "lucide-react";
 import { apiForm } from "@/lib/client/api";
-import { compressImage } from "@/lib/client/image";
 import { NUTRIENT } from "@/lib/nutrition/nutrients";
 import type { MealType } from "@/lib/nutrition/meals";
 import { api } from "@/lib/client/api";
@@ -14,7 +13,7 @@ import { MealComposer, type ComposerResult } from "@/components/nutrition/meal-c
 import { Sheet } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/toast";
 
-type Action = "menu" | "camera" | "gallery" | "text" | "favorites" | "water";
+type Action = "menu" | "text" | "favorites" | "water";
 type View = "menu" | "water" | "compose" | "favorites";
 
 export type FavoriteView = { id: string; name: string; type: MealType; kcal: number; hasPhoto: boolean };
@@ -24,14 +23,12 @@ export function FoodFab({
   glassMl,
   bottleMl,
   aiAvailable,
-  photosAvailable,
   favorites,
   hideNumbers,
 }: {
   glassMl: number;
   bottleMl: number;
   aiAvailable: boolean;
-  photosAvailable: boolean;
   favorites: FavoriteView[];
   hideNumbers: boolean;
 }) {
@@ -39,66 +36,26 @@ export function FoodFab({
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<View>("menu");
-  const [photo, setPhoto] = useState<Blob | null>(null);
-  const [preparing, setPreparing] = useState(false);
   const [saving, setSaving] = useState(false);
   const water = useWater(null, 0);
-  const cameraInput = useRef<HTMLInputElement>(null);
-  const galleryInput = useRef<HTMLInputElement>(null);
 
-  // El selector de archivos tiene que abrirse en el mismo toque (iOS lo exige).
-  const pickPhoto = useCallback(
-    (source: "camera" | "gallery") => {
-      if (!photosAvailable) {
-        toast.show({ message: "Las fotos aún no están configuradas. Describe la comida con texto ✍️" });
-        setPhoto(null);
-        setView("compose");
-        setOpen(true);
-        return;
-      }
-      (source === "camera" ? cameraInput : galleryInput).current?.click();
-    },
-    [photosAvailable, toast],
-  );
-
-  const show = useCallback(
-    (action: Action) => {
-      if (action === "camera" || action === "gallery") return pickPhoto(action);
-      setPhoto(null);
-      setView(action === "water" ? "water" : action === "text" ? "compose" : action === "favorites" ? "favorites" : "menu");
-      setOpen(true);
-    },
-    [pickPhoto],
-  );
+  const show = useCallback((action: Action) => {
+    setView(action === "water" ? "water" : action === "text" ? "compose" : action === "favorites" ? "favorites" : "menu");
+    setOpen(true);
+  }, []);
 
   useEffect(() => {
     const onAdd = (e: Event) => show((e as CustomEvent<Action>).detail ?? "menu");
     window.addEventListener("antola:food-add", onAdd);
-    // Desde «Hoy»: /comida?anadir=foto (aquí ya no hay toque, así que se abre la hoja).
+    // Desde «Hoy» o un aviso: /comida?anadir=texto o ?anadir=agua.
     const param = new URLSearchParams(window.location.search).get("anadir");
     if (param) {
-      setView(param === "agua" ? "water" : "menu");
+      setView(param === "agua" ? "water" : param === "texto" ? "compose" : "menu");
       setOpen(true);
       router.replace("/comida", { scroll: false });
     }
     return () => window.removeEventListener("antola:food-add", onAdd);
   }, [router, show]);
-
-  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    setPreparing(true);
-    setView("compose");
-    setOpen(true);
-    try {
-      setPhoto(await compressImage(file));
-    } catch (err) {
-      toast.error((err as Error).message || "No se ha podido abrir la foto");
-    } finally {
-      setPreparing(false);
-    }
-  }
 
   async function save(r: ComposerResult) {
     setSaving(true);
@@ -112,10 +69,8 @@ export function FoodFab({
       if (r.description) form.set("description", r.description);
       if (r.hungerBefore) form.set("hungerBefore", String(r.hungerBefore));
       if (r.manual) for (const [k, v] of Object.entries(r.manual)) form.set(k, String(v));
-      if (photo) form.set("photo", photo, photo.type === "image/webp" ? "comida.webp" : "comida.jpg");
       const res = await apiForm<{ estimating: boolean; notice: string | null }>("/api/nutrition/meals", form);
       setOpen(false);
-      setPhoto(null);
       toast.show({ message: res.notice ?? (res.estimating ? "Analizando tu comida… 🔍" : "Comida guardada 🍽️"), duration: res.notice ? 7000 : 3000 });
       router.refresh();
     } catch (err) {
@@ -131,8 +86,6 @@ export function FoodFab({
   }
 
   const options: { action: Exclude<Action, "menu">; emoji: string; label: string; ready: boolean }[] = [
-    { action: "camera", emoji: "📷", label: "Hacer foto", ready: true },
-    { action: "gallery", emoji: "🖼️", label: "Elegir de la galería", ready: true },
     { action: "text", emoji: "✍️", label: "Describir comida", ready: true },
     { action: "favorites", emoji: "⭐", label: "Comidas habituales", ready: true },
     { action: "water", emoji: "💧", label: "Añadir agua", ready: true },
@@ -140,8 +93,6 @@ export function FoodFab({
 
   return (
     <>
-      <input ref={cameraInput} type="file" accept="image/*" capture="environment" className="hidden" onChange={onFile} aria-hidden tabIndex={-1} />
-      <input ref={galleryInput} type="file" accept="image/*" className="hidden" onChange={onFile} aria-hidden tabIndex={-1} />
       <button
         type="button"
         onClick={() => show("menu")}
@@ -179,18 +130,7 @@ export function FoodFab({
             }}
           />
         ) : view === "compose" ? (
-          preparing ? (
-            <div className="shimmer flex h-48 items-center justify-center rounded-2xl bg-surface-2 text-muted">Preparando la foto…</div>
-          ) : (
-            <MealComposer
-              photo={photo}
-              aiAvailable={aiAvailable}
-              saving={saving}
-              onPickPhoto={pickPhoto}
-              onRemovePhoto={() => setPhoto(null)}
-              onSubmit={save}
-            />
-          )
+          <MealComposer aiAvailable={aiAvailable} saving={saving} onSubmit={save} />
         ) : (
           <ul className="overflow-hidden rounded-2xl bg-bg">
             {options.map((o) => (

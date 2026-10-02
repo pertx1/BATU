@@ -303,7 +303,7 @@ export function NutritionSettings({ initial }: { initial: NutritionSettingsValue
       {/* Preferencias */}
       <SectionTitle>Preferencias</SectionTitle>
       <div className="card divide-y divide-line">
-        <Row label="Estimar con IA" hint={initial.aiConfigured ? "Calorías y macros a partir de la foto o el texto" : "No está configurada en el servidor: valores a mano"}>
+        <Row label="Estimar con IA" hint={initial.aiConfigured ? "Calorías y macros a partir de lo que describes" : "No está configurada en el servidor: valores a mano"}>
           <Switch checked={prefs.aiEnabled} label="Estimar con IA" onChange={(v) => savePref({ aiEnabled: v })} />
         </Row>
         <Row label="Ocultar los números" hint="Sin calorías ni gramos, solo los anillos">
