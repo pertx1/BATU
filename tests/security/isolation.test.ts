@@ -118,6 +118,7 @@ beforeAll(async () => {
   mealForm.set("description", `Comida ${MARK}`);
   for (const [k, v] of Object.entries({ kcal: "500", proteinG: "20", carbsG: "60", fatG: "15" })) mealForm.set(k, v);
   const meal = await A.ok("POST", "/api/nutrition/meals", mealForm);
+  const favorite = await A.ok("POST", "/api/nutrition/favorites", { mealId: meal.id, name: `Habitual ${MARK}` });
   const pushEndpoint = `https://web.push.apple.com/aislamiento-${Date.now()}`;
   await A.ok("POST", "/api/push/subscribe", { endpoint: pushEndpoint, keys: { p256dh: "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM", auth: "tBHItJI5svbpez7KI4CCXg" } });
 
@@ -135,6 +136,7 @@ beforeAll(async () => {
     idea: idea.id,
     water: water.id,
     meal: meal.id,
+    favorite: favorite.id,
     // B no es admin: el endpoint de admin debe dar 404 con cualquier id.
     userId: "cuser00000000000000000000",
     pushEndpoint,

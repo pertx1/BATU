@@ -1,62 +1,57 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Droplet, Flame, Info, Wheat, Zap } from "lucide-react";
 import { requireOnboardedUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
-import { formatKg, GOAL_INFO } from "@/lib/nutrition/calc";
-import { NUTRIENT } from "@/lib/nutrition/nutrients";
+import { dbToDateStr } from "@/lib/dates";
+import { ageFromBirthYear, weightTrend } from "@/lib/nutrition/calc";
+import { aiConfigured } from "@/lib/nutrition/ai";
+import { currentYear } from "@/lib/nutrition/profile";
 import { PageBody, PageHeader } from "@/components/app/page-header";
-import { Ring } from "@/components/nutrition/ring";
+import { NutritionSettings } from "@/components/nutrition/nutrition-settings";
 
 export const metadata: Metadata = { title: "Ajustes de nutrición" };
 
 export default async function FoodSettingsPage() {
   const user = await requireOnboardedUser();
-  const profile = await db.nutritionProfile.findUnique({ where: { userId: user.id } });
-  if (!profile) redirect("/nutricion/bienvenida");
+  const [p, logs] = await Promise.all([
+    db.nutritionProfile.findUnique({ where: { userId: user.id } }),
+    db.weightLog.findMany({ where: { userId: user.id }, orderBy: { day: "desc" }, take: 60, select: { day: true, kg: true } }),
+  ]);
+  if (!p) redirect("/nutricion/bienvenida");
+  // Peso de partida para recalcular: la tendencia de los pesajes (o el del último cálculo).
+  const trend = weightTrend(logs.reverse().map((l) => ({ day: dbToDateStr(l.day), kg: l.kg }))).at(-1)?.trend;
+  const weightKg = Math.round((trend ?? p.weightAtCalc) * 10) / 10;
 
   return (
     <>
       <PageHeader title="Ajustes de nutrición" back="/comida" />
       <PageBody>
-        <div className="card flex items-center gap-4 p-5">
-          <div className="flex-1">
-            <p className="text-5xl font-bold tabular-nums tracking-tight">{profile.kcalTarget}</p>
-            <p className="text-muted">calorías objetivo al día</p>
-          </div>
-          <Ring value={1} size={104} stroke={12} color={NUTRIENT.kcal.color} icon={<Flame size={20} />} />
-        </div>
-        <div className="mt-2 grid grid-cols-3 gap-2">
-          {[
-            { g: profile.proteinG, label: "Proteína", color: NUTRIENT.protein.color, icon: <Zap size={15} fill="currentColor" /> },
-            { g: profile.carbsG, label: "Carbohidratos", color: NUTRIENT.carbs.color, icon: <Wheat size={15} /> },
-            { g: profile.fatG, label: "Grasa", color: NUTRIENT.fat.color, icon: <Droplet size={15} fill="currentColor" /> },
-          ].map((m) => (
-            <div key={m.label} className="card flex flex-col items-center p-3">
-              <Ring value={1} size={64} stroke={8} color={m.color} icon={m.icon} />
-              <p className="mt-2 text-lg font-bold tabular-nums">{m.g} g</p>
-              <p className="text-[12px] text-muted">{m.label}</p>
-            </div>
-          ))}
-        </div>
-        <div className="card mt-3 p-4 text-[15px]">
-          <p>
-            Objetivo: <b>{GOAL_INFO[profile.goal].label}</b>
-            {profile.targetWeightKg ? ` · ${formatKg(profile.targetWeightKg)} kg` : ""}
-          </p>
-          <p className="mt-1 text-muted">
-            Fibra {profile.fiberG} g · Agua {formatKg(profile.waterMl / 1000)} L · TMB {profile.bmr} kcal · Gasto {profile.tdee} kcal
-          </p>
-          <Link href="/nutricion/bienvenida?rehacer=1" className="btn btn-secondary mt-3 w-full">
-            Rehacer el cuestionario
-          </Link>
-        </div>
-        <p className="mt-3 flex gap-2 rounded-xl bg-surface-2 px-3 py-2.5 text-[13px] text-muted">
-          <Info size={16} className="mt-0.5 shrink-0" />
-          Son estimaciones orientativas y no sustituyen a un profesional de la salud.
-        </p>
-        <p className="mt-6 text-center text-sm text-muted">El resto de ajustes (objetivos a mano, IA, vaso y botella, avisos…) llegan en la fase 4.</p>
+        <NutritionSettings
+          initial={{
+            plan: {
+              sex: p.sex,
+              age: ageFromBirthYear(p.birthYear, currentYear(user.timezone)),
+              heightCm: p.heightCm,
+              weightKg,
+              activity: p.activity,
+              goal: p.goal,
+              pace: p.pace,
+              targetWeightKg: p.targetWeightKg,
+            },
+            bmr: p.bmr,
+            targets: { kcal: p.kcalTarget, proteinG: p.proteinG, carbsG: p.carbsG, fatG: p.fatG, fiberG: p.fiberG, waterMl: p.waterMl },
+            manualTargets: p.manualTargets,
+            aiEnabled: p.aiEnabled,
+            aiConfigured: aiConfigured(),
+            hideNumbers: p.hideNumbers,
+            glassMl: p.glassMl,
+            bottleMl: p.bottleMl,
+            wakeTime: p.wakeTime,
+            sleepTime: p.sleepTime,
+            waterReminders: p.waterReminders,
+            weighInPerWeek: p.weighInPerWeek,
+          }}
+        />
       </PageBody>
     </>
   );

@@ -1,5 +1,5 @@
 import "server-only";
-import { DeleteObjectCommand, DeleteObjectsCommand, GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { CopyObjectCommand, DeleteObjectCommand, DeleteObjectsCommand, GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 /**
  * Fotos de comida en Cloudflare R2 (API compatible con S3). El bucket es
@@ -84,3 +84,15 @@ export async function deleteUserPhotos(userId: string) {
     token = page.IsTruncated ? page.NextContinuationToken : undefined;
   } while (token);
 }
+
+/** Copia una foto dentro del bucket (p. ej. al guardar una comida habitual). */
+export async function copyPhoto(from: string, to: string) {
+  const { client, bucket } = r2();
+  await client.send(new CopyObjectCommand({ Bucket: bucket, Key: to, CopySource: `${bucket}/${encodeURI(from)}` }));
+}
+
+export function favoritePhotoKey(userId: string, favoriteId: string, ext: string) {
+  return `${userPrefix(userId)}favorites/${favoriteId}.${ext}`;
+}
+
+export const keyExt = (key: string) => key.split(".").pop() ?? "jpg";

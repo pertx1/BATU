@@ -5,7 +5,8 @@ import { Camera, ChevronRight, GlassWater, Plus } from "lucide-react";
 import type { FoodToday } from "@/lib/data/nutrition";
 import { formatLiters, remaining } from "@/lib/nutrition/meals";
 import { NUTRIENT } from "@/lib/nutrition/nutrients";
-import { NUTRIENT_ICON, useWater } from "@/components/nutrition/diary";
+import { NUTRIENT_ICON } from "@/components/nutrition/bits";
+import { useWater } from "@/components/nutrition/diary";
 import { Ring } from "@/components/nutrition/ring";
 
 const fmt = new Intl.NumberFormat("es-ES");

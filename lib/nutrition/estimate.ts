@@ -95,3 +95,43 @@ export function midpoints(e: Pick<Estimate, "totals">): Totals {
     fiberG: Math.round(mid(e.totals.fiber) * 10) / 10,
   };
 }
+
+/* ─── Edición a mano en el detalle ─────────────────────────────────────── */
+
+const editRange = z.object({ min: z.number().finite().min(0).max(5000), max: z.number().finite().min(0).max(5000) });
+
+/** Un alimento tal como llega del detalle (editado o añadido a mano). */
+export const foodInputSchema = z.object({
+  name: z.string().trim().min(1, "Pon el nombre del alimento").max(80),
+  quantity: z.string().trim().max(60).default(""),
+  kcal: editRange,
+  protein: editRange,
+  carbs: editRange,
+  fat: editRange,
+  fiber: editRange,
+});
+
+/** Normaliza una lista de alimentos editada a mano (mismos topes que la IA). */
+export function cleanFoods(foods: z.infer<typeof foodInputSchema>[]): FoodItem[] {
+  return normalizeEstimate({ name: "x", foods, confidence: "media", assumptions: [] }).foods;
+}
+
+/** Cambia la ración de un alimento (×0,5, ×1,5…). */
+export function scaleFood(f: FoodItem, factor: number): FoodItem {
+  const s = (r: Range) => ({ min: Math.round(r.min * factor * 10) / 10, max: Math.round(r.max * factor * 10) / 10 });
+  return { ...f, kcal: s(f.kcal), protein: s(f.protein), carbs: s(f.carbs), fat: s(f.fat), fiber: s(f.fiber) };
+}
+
+/** Alimento con un valor exacto (mínimo = máximo), para añadir a mano. */
+export function exactFood(name: string, quantity: string, v: { kcal: number; protein: number; carbs: number; fat: number; fiber: number }): FoodItem {
+  const e = (n: number) => ({ min: n, max: n });
+  return { name, quantity, kcal: e(v.kcal), protein: e(v.protein), carbs: e(v.carbs), fat: e(v.fat), fiber: e(v.fiber) };
+}
+
+/** Lee MealLog.estimate (puede ser una estimación, un error o nada). */
+export function readEstimate(json: unknown): Estimate | null {
+  if (!json || typeof json !== "object" || !("foods" in json) || !Array.isArray((json as Estimate).foods)) return null;
+  return json as Estimate;
+}
+
+export const CONFIDENCE_LABEL: Record<Confidence, string> = { baja: "Confianza baja", media: "Confianza media", alta: "Confianza alta" };

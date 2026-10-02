@@ -13,9 +13,15 @@ import { FoodFab } from "@/components/nutrition/food-fab";
 /** Cabecera común de Diario, Análisis y Peso. La primera vez, el cuestionario. */
 export default async function FoodLayout({ children }: { children: React.ReactNode }) {
   const user = await requireOnboardedUser();
-  const [profile, streak] = await Promise.all([
-    db.nutritionProfile.findUnique({ where: { userId: user.id }, select: { glassMl: true, bottleMl: true, aiEnabled: true } }),
+  const [profile, streak, favorites] = await Promise.all([
+    db.nutritionProfile.findUnique({ where: { userId: user.id }, select: { glassMl: true, bottleMl: true, aiEnabled: true, hideNumbers: true } }),
     foodStreak(user.id, todayStr(user.timezone)),
+    // Las habituales: primero las más usadas.
+    db.favoriteMeal.findMany({
+      where: { userId: user.id },
+      orderBy: [{ useCount: "desc" }, { createdAt: "desc" }],
+      select: { id: true, name: true, type: true, kcal: true, photoKey: true },
+    }),
   ]);
   if (!profile) redirect("/nutricion/bienvenida");
   return (
@@ -30,6 +36,8 @@ export default async function FoodLayout({ children }: { children: React.ReactNo
         bottleMl={profile.bottleMl}
         aiAvailable={profile.aiEnabled && aiConfigured()}
         photosAvailable={photosConfigured()}
+        hideNumbers={profile.hideNumbers}
+        favorites={favorites.map((f) => ({ id: f.id, name: f.name, type: f.type ?? "LUNCH", kcal: f.kcal, hasPhoto: !!f.photoKey }))}
       />
     </>
   );

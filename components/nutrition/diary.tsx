@@ -3,26 +3,20 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarDays, Check, CupSoda, Droplet, Flame, GlassWater, Leaf, Wheat, Zap } from "lucide-react";
+import { CalendarDays, Check, CupSoda, GlassWater } from "lucide-react";
 import { api } from "@/lib/client/api";
 import { addDays, formatDateStr, type DateStr } from "@/lib/dates";
 import { NUTRIENT } from "@/lib/nutrition/nutrients";
 import { formatLiters, MEAL_TYPE_INFO, remaining } from "@/lib/nutrition/meals";
 import type { Diary, MealView } from "@/lib/data/nutrition";
 import { Ring } from "@/components/nutrition/ring";
+import { MealThumb, NUTRIENT_ICON } from "@/components/nutrition/bits";
+import { FULLNESS_FACES, MealDetail } from "@/components/nutrition/meal-detail";
 import { useToast } from "@/components/ui/toast";
 
 const fmt = new Intl.NumberFormat("es-ES");
 const g = (n: number) => `${Math.round(n)} g`;
 
-export const NUTRIENT_ICON = {
-  kcal: (s = 18) => <Flame size={s} />,
-  protein: (s = 15) => <Zap size={s} fill="currentColor" />,
-  carbs: (s = 15) => <Wheat size={s} />,
-  fat: (s = 15) => <Droplet size={s} fill="currentColor" />,
-  fiber: (s = 15) => <Leaf size={s} />,
-  water: (s = 15) => <GlassWater size={s} />,
-};
 
 /* ─── Selector de día ─────────────────────────────────────────────────────── */
 
@@ -138,7 +132,7 @@ function MacroCard({
   return (
     <div className="card flex min-w-0 flex-col p-3">
       {hideNumbers ? null : <p className="text-[22px] font-bold leading-tight tabular-nums">{fmtUnit(goalReached ? consumed : r.value)}</p>}
-      <p className={`truncate text-[12px] ${hideNumbers ? "text-[15px] font-semibold text-fg" : "text-muted"}`}>{NUTRIENT[k].label}</p>
+      <p className={`truncate text-[12px] ${hideNumbers ? "font-semibold text-fg" : "text-muted"}`}>{NUTRIENT[k].label}</p>
       <p className="flex h-5 items-center gap-1 text-[12px] font-medium text-muted">
         {goalReached ? (
           <>
@@ -282,38 +276,16 @@ export function WaterCard({ diary }: { diary: Diary }) {
 
 /* ─── Lista de comidas ─────────────────────────────────────────────────────── */
 
-export function MealThumb({ meal, size = 76 }: { meal: Pick<MealView, "id" | "type" | "hasPhoto">; size?: number }) {
-  const info = MEAL_TYPE_INFO[meal.type];
-  if (meal.hasPhoto) {
-    return (
-      // Foto privada: la sirve una ruta que comprueba la sesión.
-      <img
-        src={`/api/nutrition/photos/meal/${meal.id}`}
-        alt=""
-        width={size}
-        height={size}
-        loading="lazy"
-        className="shrink-0 rounded-2xl bg-surface-2 object-cover"
-        style={{ width: size, height: size }}
-      />
-    );
-  }
-  return (
-    <span
-      className="flex shrink-0 items-center justify-center rounded-2xl"
-      style={{ width: size, height: size, background: `${info.bg}55`, fontSize: size * 0.45 }}
-      aria-hidden
-    >
-      {info.emoji}
-    </span>
-  );
-}
-
-function MealRow({ meal, hideNumbers }: { meal: MealView; hideNumbers: boolean }) {
+function MealRow({ meal, hideNumbers, onOpen }: { meal: MealView; hideNumbers: boolean; onOpen: () => void }) {
   const pending = meal.status === "PENDING";
   const title = meal.name ?? meal.description ?? MEAL_TYPE_INFO[meal.type].label;
   return (
-    <li className={`card flex items-center gap-3 p-3 ${pending ? "shimmer" : ""}`}>
+    <li>
+      <button
+        type="button"
+        onClick={onOpen}
+        className={`card flex w-full items-center gap-3 p-3 text-left active:bg-surface-2 ${pending ? "shimmer" : ""}`}
+      >
       <MealThumb meal={meal} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
@@ -351,12 +323,15 @@ function MealRow({ meal, hideNumbers }: { meal: MealView; hideNumbers: boolean }
           </>
         )}
       </div>
+      </button>
     </li>
   );
 }
 
 export function MealList({ diary }: { diary: Diary }) {
   const router = useRouter();
+  const [openId, setOpenId] = useState<string | null>(null);
+  const open = diary.meals.find((m) => m.id === openId) ?? null;
   const pending = diary.meals.some((m) => m.status === "PENDING");
   // Mientras la IA estima, la lista se actualiza sola.
   useEffect(() => {
@@ -375,7 +350,7 @@ export function MealList({ diary }: { diary: Diary }) {
       {diary.meals.length ? (
         <ul className="space-y-2.5">
           {diary.meals.map((m) => (
-            <MealRow key={m.id} meal={m} hideNumbers={diary.hideNumbers} />
+            <MealRow key={m.id} meal={m} hideNumbers={diary.hideNumbers} onOpen={() => setOpenId(m.id)} />
           ))}
         </ul>
       ) : (
@@ -387,6 +362,86 @@ export function MealList({ diary }: { diary: Diary }) {
           <p className="mt-1 text-[15px] text-muted">Toca + para hacer una foto o describir lo que comes.</p>
         </div>
       )}
+      <MealDetail meal={open} hideNumbers={diary.hideNumbers} aiAvailable={diary.aiAvailable} onClose={() => setOpenId(null)} />
     </section>
+  );
+}
+
+const DISMISSED_KEY = "antola:saciedad-descartada";
+
+function readDismissed(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(DISMISSED_KEY) ?? "[]");
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Recordatorio dentro de la app: si apuntaste el hambre antes de una comida
+ * de hoy y ha pasado media hora, pregunta qué tal te quedaste.
+ */
+export function FullnessPrompt({ diary }: { diary: Diary }) {
+  const router = useRouter();
+  const toast = useToast();
+  const [dismissed, setDismissed] = useState<string[] | null>(null);
+  const [now, setNow] = useState(0);
+  useEffect(() => {
+    setDismissed(readDismissed());
+    setNow(Date.now());
+  }, []);
+  if (dismissed === null || diary.day !== diary.today) return null;
+  const meal = diary.meals.find(
+    (m) => m.hungerBefore != null && m.fullnessAfter == null && m.status !== "PENDING" && now - Date.parse(m.eatenAt) > 30 * 60_000 && !dismissed.includes(m.id),
+  );
+  if (!meal) return null;
+
+  function dismiss() {
+    const list = [...readDismissed(), meal!.id].slice(-30);
+    try {
+      localStorage.setItem(DISMISSED_KEY, JSON.stringify(list));
+    } catch {
+      // sin almacenamiento: solo se oculta ahora
+    }
+    setDismissed(list);
+  }
+
+  async function answer(v: number) {
+    setDismissed((d) => [...(d ?? []), meal!.id]);
+    try {
+      await api(`/api/nutrition/meals/${meal!.id}`, { method: "PATCH", body: { fullnessAfter: v } });
+      toast.show({ message: "¡Apuntado! 🙌" });
+      router.refresh();
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }
+
+  const name = meal.name ?? MEAL_TYPE_INFO[meal.type].label.toLowerCase();
+  return (
+    <div className="card mt-3 p-4 animate-fade-up">
+      <div className="flex items-start gap-2">
+        <p className="flex-1 font-semibold">¿Qué tal te quedaste después de {name}?</p>
+        <button type="button" onClick={dismiss} className="-m-1 p-1 text-[15px] text-muted">
+          Ahora no
+        </button>
+      </div>
+      <div className="mt-3 grid grid-cols-5 gap-1.5">
+        {FULLNESS_FACES.map((f) => (
+          <button
+            key={f.value}
+            type="button"
+            onClick={() => answer(f.value)}
+            aria-label={`Saciedad ${f.value} de 5: ${f.label}`}
+            className="flex flex-col items-center gap-0.5 rounded-2xl bg-surface-2 py-2"
+          >
+            <span className="text-2xl" aria-hidden>
+              {f.emoji}
+            </span>
+            <span className="text-[11px] font-semibold">{f.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }

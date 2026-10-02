@@ -2,17 +2,22 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CupSoda, GlassWater, Plus } from "lucide-react";
+import { CupSoda, GlassWater, Plus, X } from "lucide-react";
 import { apiForm } from "@/lib/client/api";
 import { compressImage } from "@/lib/client/image";
 import { NUTRIENT } from "@/lib/nutrition/nutrients";
+import type { MealType } from "@/lib/nutrition/meals";
+import { api } from "@/lib/client/api";
+import { MealThumb } from "@/components/nutrition/bits";
 import { useWater } from "@/components/nutrition/diary";
 import { MealComposer, type ComposerResult } from "@/components/nutrition/meal-composer";
 import { Sheet } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/toast";
 
 type Action = "menu" | "camera" | "gallery" | "text" | "favorites" | "water";
-type View = "menu" | "water" | "compose";
+type View = "menu" | "water" | "compose" | "favorites";
+
+export type FavoriteView = { id: string; name: string; type: MealType; kcal: number; hasPhoto: boolean };
 
 /** Botón «+» de la pestaña Comida (blanco) y su hoja para añadir. */
 export function FoodFab({
@@ -20,11 +25,15 @@ export function FoodFab({
   bottleMl,
   aiAvailable,
   photosAvailable,
+  favorites,
+  hideNumbers,
 }: {
   glassMl: number;
   bottleMl: number;
   aiAvailable: boolean;
   photosAvailable: boolean;
+  favorites: FavoriteView[];
+  hideNumbers: boolean;
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -56,7 +65,7 @@ export function FoodFab({
     (action: Action) => {
       if (action === "camera" || action === "gallery") return pickPhoto(action);
       setPhoto(null);
-      setView(action === "water" ? "water" : action === "text" ? "compose" : "menu");
+      setView(action === "water" ? "water" : action === "text" ? "compose" : action === "favorites" ? "favorites" : "menu");
       setOpen(true);
     },
     [pickPhoto],
@@ -125,7 +134,7 @@ export function FoodFab({
     { action: "camera", emoji: "📷", label: "Hacer foto", ready: true },
     { action: "gallery", emoji: "🖼️", label: "Elegir de la galería", ready: true },
     { action: "text", emoji: "✍️", label: "Describir comida", ready: true },
-    { action: "favorites", emoji: "⭐", label: "Comidas habituales", ready: false },
+    { action: "favorites", emoji: "⭐", label: "Comidas habituales", ready: true },
     { action: "water", emoji: "💧", label: "Añadir agua", ready: true },
   ];
 
@@ -145,7 +154,7 @@ export function FoodFab({
       <Sheet
         open={open}
         onClose={() => !saving && setOpen(false)}
-        title={view === "water" ? "Añadir agua" : view === "compose" ? "Registrar comida" : "Añadir"}
+        title={view === "water" ? "Añadir agua" : view === "compose" ? "Registrar comida" : view === "favorites" ? "Comidas habituales" : "Añadir"}
       >
         {view === "water" ? (
           <div className="grid grid-cols-2 gap-2">
@@ -160,6 +169,15 @@ export function FoodFab({
               <span className="text-[13px] font-normal text-muted">{bottleMl} ml</span>
             </button>
           </div>
+        ) : view === "favorites" ? (
+          <FavoritesList
+            favorites={favorites}
+            hideNumbers={hideNumbers}
+            onLogged={() => {
+              setOpen(false);
+              router.refresh();
+            }}
+          />
         ) : view === "compose" ? (
           preparing ? (
             <div className="shimmer flex h-48 items-center justify-center rounded-2xl bg-surface-2 text-muted">Preparando la foto…</div>
@@ -195,5 +213,78 @@ export function FoodFab({
         )}
       </Sheet>
     </>
+  );
+}
+
+/** Comidas habituales: un toque y queda registrada (sin volver a llamar a la IA). */
+function FavoritesList({ favorites, hideNumbers, onLogged }: { favorites: FavoriteView[]; hideNumbers: boolean; onLogged: () => void }) {
+  const toast = useToast();
+  const router = useRouter();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<string | null>(null);
+  if (!favorites.length) {
+    return (
+      <div className="rounded-2xl bg-bg px-5 py-8 text-center">
+        <p className="text-4xl" aria-hidden>
+          ⭐
+        </p>
+        <p className="mt-2 font-semibold">Aún no tienes comidas habituales</p>
+        <p className="mt-1 text-[15px] text-muted">Abre una comida registrada y toca «Guardar como comida habitual».</p>
+      </div>
+    );
+  }
+  async function log(f: FavoriteView) {
+    setBusy(f.id);
+    try {
+      const body: Record<string, unknown> = {};
+      const dia = new URLSearchParams(window.location.search).get("dia");
+      if (dia) body.day = dia;
+      const d = new Date();
+      body.minutes = d.getHours() * 60 + d.getMinutes();
+      await api(`/api/nutrition/favorites/${f.id}/log`, { body });
+      toast.show({ message: `${f.name} registrada 🍽️` });
+      onLogged();
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  }
+  async function remove(f: FavoriteView) {
+    if (confirm !== f.id) {
+      setConfirm(f.id);
+      setTimeout(() => setConfirm((c) => (c === f.id ? null : c)), 4000);
+      return;
+    }
+    try {
+      await api(`/api/nutrition/favorites/${f.id}`, { method: "DELETE" });
+      toast.show({ message: "Quitada de tus comidas habituales" });
+      router.refresh();
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }
+  return (
+    <ul className="divide-y divide-line overflow-hidden rounded-2xl bg-bg">
+      {favorites.map((f) => (
+        <li key={f.id} className="flex items-center gap-2 pr-2">
+          <button type="button" className="flex min-w-0 flex-1 items-center gap-3 p-2.5 text-left active:bg-surface-2" disabled={!!busy} onClick={() => log(f)}>
+            <MealThumb meal={f} size={52} kind="favorite" />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-semibold">{f.name}</span>
+              <span className="block text-[13px] text-muted">{busy === f.id ? "Registrando…" : hideNumbers ? "Toca para registrarla" : `${f.kcal} kcal · toca para registrarla`}</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => remove(f)}
+            className={`flex h-9 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold ${confirm === f.id ? "bg-surface-2 px-3" : "w-9 text-muted"}`}
+            aria-label={`Quitar ${f.name} de las habituales`}
+          >
+            {confirm === f.id ? "Quitar" : <X size={18} />}
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }

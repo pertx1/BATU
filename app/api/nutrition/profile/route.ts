@@ -4,12 +4,16 @@ import { parseBody, withUser } from "@/lib/api";
 import { award } from "@/lib/gamification";
 import { planInputSchema, saveProfile } from "@/lib/nutrition/profile";
 
-const schema = planInputSchema.extend({ onboarding: z.boolean().default(false) });
+const schema = planInputSchema.extend({
+  onboarding: z.boolean().default(false),
+  // Desde «Recalcular» en los ajustes: si has cambiado el peso, cuenta como pesaje de hoy.
+  recordWeight: z.boolean().default(false),
+});
 
 /** Crea o recalcula el perfil de nutrición (todo se calcula en el servidor). */
 export const POST = withUser(async (req, { user }) => {
-  const { onboarding, ...body } = await parseBody(req, schema);
-  const { profile, plan } = await saveProfile(user, body, { firstWeighIn: onboarding });
+  const { onboarding, recordWeight, ...body } = await parseBody(req, schema);
+  const { profile, plan } = await saveProfile(user, body, { firstWeighIn: onboarding || recordWeight });
   // Crear el objetivo "Peso" puede desbloquear «Soñadora».
   const gamification = onboarding && profile.goalId ? await award(user, { type: "check" }) : null;
   return NextResponse.json({

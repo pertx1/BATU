@@ -4,7 +4,7 @@ import { requireOnboardedUser } from "@/lib/auth/session";
 import { isDateStr, todayStr } from "@/lib/dates";
 import { getDiary } from "@/lib/data/nutrition";
 import { PageBody } from "@/components/app/page-header";
-import { CaloriesCard, DayPicker, MacroPager, MealList, WaterCard } from "@/components/nutrition/diary";
+import { CaloriesCard, DayPicker, FullnessPrompt, MacroPager, MealList, WaterCard } from "@/components/nutrition/diary";
 
 export const metadata: Metadata = { title: "Comida" };
 
@@ -20,6 +20,7 @@ export default async function DiaryPage({ searchParams }: PageProps<"/comida">) 
   return (
     <PageBody>
       <DayPicker day={day} today={today} />
+      <FullnessPrompt diary={diary} />
       <div className="mt-2 space-y-3">
         <CaloriesCard diary={diary} />
         <MacroPager key={day} diary={diary} />

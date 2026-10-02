@@ -1,6 +1,8 @@
 import "server-only";
 import { db } from "@/lib/db";
-import { addDays, dateStrToDb, dbToDateStr, formatTz, todayStr, type DateStr } from "@/lib/dates";
+import { addDays, dateStrToDb, dbToDateStr, formatTz, localMinutes, todayStr, type DateStr } from "@/lib/dates";
+import { readEstimate, type Estimate } from "@/lib/nutrition/estimate";
+import { aiConfigured } from "@/lib/nutrition/ai";
 import { failStaleEstimates } from "@/lib/nutrition/meal-service";
 import { logStreak, sumTotals, type MealType, type Totals } from "@/lib/nutrition/meals";
 
@@ -14,6 +16,11 @@ export type MealView = {
   status: "NONE" | "PENDING" | "DONE" | "FAILED";
   /** Mensaje amable si la estimación falló. */
   error: string | null;
+  estimate: Estimate | null;
+  hungerBefore: number | null;
+  fullnessAfter: number | null;
+  minutes: number; // hora local en minutos (para editarla)
+  eatenAt: string; // ISO
   kcal: number;
   proteinG: number;
   carbsG: number;
@@ -32,6 +39,7 @@ export type Diary = {
   meals: MealView[];
   streak: number;
   hideNumbers: boolean;
+  aiAvailable: boolean;
   glassMl: number;
   bottleMl: number;
 };
@@ -73,6 +81,11 @@ export async function getDiary(user: { id: string; timezone: string }, day: Date
       m.status === "FAILED" && m.estimate && typeof m.estimate === "object" && "error" in m.estimate && typeof m.estimate.error === "string"
         ? m.estimate.error
         : null,
+    estimate: readEstimate(m.estimate),
+    hungerBefore: m.hungerBefore,
+    fullnessAfter: m.fullnessAfter,
+    minutes: localMinutes(m.eatenAt, user.timezone),
+    eatenAt: m.eatenAt.toISOString(),
     kcal: m.kcal,
     proteinG: m.proteinG,
     carbsG: m.carbsG,
@@ -97,6 +110,7 @@ export async function getDiary(user: { id: string; timezone: string }, day: Date
     meals: views,
     streak,
     hideNumbers: profile.hideNumbers,
+    aiAvailable: profile.aiEnabled && aiConfigured(),
     glassMl: profile.glassMl,
     bottleMl: profile.bottleMl,
   };

@@ -20,12 +20,13 @@ export type VictimIds = {
   idea: string;
   water: string;
   meal: string;
+  favorite: string;
   userId: string;
   pushEndpoint: string;
 };
 
 export type Attack = {
-  method: "GET" | "POST" | "PATCH" | "DELETE";
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   /** Plantilla tal como está en app/api, p. ej. "/api/tasks/[id]". */
   route: string;
   /** Ruta real con los ids de A. */
@@ -72,7 +73,12 @@ export const FOREIGN_ID_ATTACKS: Attack[] = [
   { method: "POST", route: "/api/ideas/[id]/task", path: (v) => `/api/ideas/${v.idea}/task`, expect: NOT_FOUND },
   { method: "DELETE", route: "/api/nutrition/water/[id]", path: (v) => `/api/nutrition/water/${v.water}`, expect: NOT_FOUND },
   { method: "DELETE", route: "/api/nutrition/meals/[id]", path: (v) => `/api/nutrition/meals/${v.meal}`, expect: NOT_FOUND },
+  { method: "PATCH", route: "/api/nutrition/meals/[id]", path: (v) => `/api/nutrition/meals/${v.meal}`, body: () => ({ name: "hackeada", foods: [] }), expect: NOT_FOUND },
+  { method: "POST", route: "/api/nutrition/meals/[id]/estimate", path: (v) => `/api/nutrition/meals/${v.meal}/estimate`, body: () => ({ correction: "otra cosa" }), expect: NOT_FOUND },
   { method: "GET", route: "/api/nutrition/photos/[kind]/[id]", path: (v) => `/api/nutrition/photos/meal/${v.meal}`, expect: NOT_FOUND },
+  { method: "GET", route: "/api/nutrition/photos/[kind]/[id]", path: (v) => `/api/nutrition/photos/favorite/${v.favorite}`, expect: NOT_FOUND, note: "habitual" },
+  { method: "DELETE", route: "/api/nutrition/favorites/[id]", path: (v) => `/api/nutrition/favorites/${v.favorite}`, expect: NOT_FOUND },
+  { method: "POST", route: "/api/nutrition/favorites/[id]/log", path: (v) => `/api/nutrition/favorites/${v.favorite}/log`, body: () => ({}), expect: NOT_FOUND },
   // B no es admin: el panel no existe para él.
   { method: "POST", route: "/api/admin/users/[id]", path: (v) => `/api/admin/users/${v.userId}`, body: () => ({ disabled: true }), expect: NOT_FOUND },
 ];
@@ -92,6 +98,8 @@ export const BODY_ATTACKS: Attack[] = [
   { method: "DELETE", route: "/api/push/subscribe", path: () => "/api/push/subscribe", body: (v) => ({ endpoint: v.pushEndpoint }), expect: [200] },
   // La revisión de B no puede contar tareas de A.
   { method: "POST", route: "/api/reviews", path: () => "/api/reviews", body: (v) => ({ weekStart: "2026-09-21", nextWeekFocus: null, notes: null, pendingIds: [v.task] }), expect: [200] },
+  // No se puede guardar como habitual una comida de A.
+  { method: "POST", route: "/api/nutrition/favorites", path: () => "/api/nutrition/favorites", body: (v) => ({ mealId: v.meal }), expect: NOT_FOUND, note: "comida ajena" },
   // No se acepta un userId desde el cliente.
   { method: "PATCH", route: "/api/settings", path: () => "/api/settings", body: (v) => ({ userId: v.userId, dndEnabled: true }), expect: [400] },
 ];
@@ -110,6 +118,8 @@ export const SELF_ENDPOINTS: Pick<Attack, "method" | "route">[] = [
   { method: "POST", route: "/api/nutrition/profile" },
   { method: "POST", route: "/api/nutrition/water" },
   { method: "POST", route: "/api/nutrition/meals" },
+  { method: "PATCH", route: "/api/nutrition/settings" },
+  { method: "PUT", route: "/api/nutrition/targets" },
   { method: "POST", route: "/api/onboarding" },
   { method: "POST", route: "/api/push/subscribe" },
   { method: "POST", route: "/api/push/test" },
