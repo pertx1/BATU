@@ -9,17 +9,27 @@ interfaz está en español.
 - **Tareas**: fecha, hora, prioridad, proyecto, objetivo, subtareas, recordatorio (a una
   hora o X minutos antes), repetición (diaria, días concretos, semanal, mensual), bandeja de
   entrada y captura rápida con el botón «+».
-- **Hábitos**: días de la semana, recordatorio, rachas y cuadrícula de las últimas semanas.
+- **Hábitos** (en el menú de Hoy): días de la semana, recordatorio, rachas, cuadrícula de las
+  últimas semanas y hábitos sanos predefinidos que se activan con un toque.
 - **Calendario**: vistas mensual, semanal y diaria; eventos con recordatorio.
-- **Objetivos**: numéricos (con gráfica de evolución), por hitos o por tareas vinculadas.
+- **Objetivos**: numéricos (con gráfica de evolución), por hitos, por tareas vinculadas o de
+  peso (sigue la tendencia de los pesajes).
+- **Comida**: plan personal (TMB, gasto diario, calorías, macros, fibra y agua) con límites de
+  seguridad; **Diario** con anillos de calorías y macros, agua y comidas registradas con foto
+  o texto y estimadas con IA (rangos, corrección, comidas habituales, hambre y saciedad);
+  **Análisis** (calorías, macros, agua, constancia, hambre) y **Peso** (tendencia, objetivo,
+  hitos, proyección e historial).
+- **Antola**: la hormiga que acompaña. XP, niveles, migas, logros, retos semanales, tienda de
+  accesorios y frases que nunca regañan (y nunca juzgan la comida, el cuerpo ni el peso).
 - **Estadísticas** (7 y 30 días) y **revisión semanal** guiada con historial.
 - **Avisos**: tareas, eventos, hábitos, resumen de la mañana, repaso de la noche, tareas
-  atrasadas y revisión semanal, con horario de «no molestar».
+  atrasadas, revisión semanal, beber agua y pesarse, con horario de «no molestar».
 - **Mi cuenta** (exportar/eliminar), recuperar contraseña, panel de administración y
   página de privacidad.
 
 **Stack**: Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Prisma 6 + PostgreSQL
-(Supabase) · date-fns + date-fns-tz · web-push (VAPID) · Resend · Vercel (o Render).
+(Supabase) · date-fns + date-fns-tz · web-push (VAPID) · Resend · recharts · Anthropic SDK
+(estimación de comidas) · Cloudflare R2 con el SDK de S3 (fotos) · Vercel (o Render).
 
 ---
 
@@ -33,13 +43,14 @@ interfaz está en español.
 6. [Despliegue en Render (alternativa)](#6-despliegue-en-render-alternativa)
 7. [Programar los avisos con cron-job.org](#7-programar-los-avisos-con-cron-joborg)
 8. [Emails con Resend](#8-emails-con-resend)
-9. [Instalar en el iPhone y activar las notificaciones](#9-instalar-en-el-iphone-y-activar-las-notificaciones)
-10. [Administración](#10-administración)
-11. [Seguridad](#11-seguridad)
-12. [Tests](#12-tests)
-13. [Desarrollo local](#13-desarrollo-local)
-14. [Cómo funciona por dentro](#14-cómo-funciona-por-dentro)
-15. [Solución de problemas](#15-solución-de-problemas)
+9. [Comida: IA (Anthropic) y fotos (Cloudflare R2)](#9-comida-ia-anthropic-y-fotos-cloudflare-r2)
+10. [Instalar en el iPhone y activar las notificaciones](#10-instalar-en-el-iphone-y-activar-las-notificaciones)
+11. [Administración](#11-administración)
+12. [Seguridad](#12-seguridad)
+13. [Tests](#13-tests)
+14. [Desarrollo local](#14-desarrollo-local)
+15. [Cómo funciona por dentro](#15-cómo-funciona-por-dentro)
+16. [Solución de problemas](#16-solución-de-problemas)
 
 ---
 
@@ -50,8 +61,9 @@ interfaz está en español.
 3. Importa el repositorio en **Vercel** y añade las variables ([§2](#2-variables-de-entorno), [§5](#5-despliegue-en-vercel)).
 4. Abre `https://TU-APP.vercel.app/api/salud` → debe decir `"ok": true`.
 5. Crea en **cron-job.org** una llamada cada minuto a `/api/cron/tick?key=…` ([§7](#7-programar-los-avisos-con-cron-joborg)).
-6. Instálala en el iPhone y activa las notificaciones ([§9](#9-instalar-en-el-iphone-y-activar-las-notificaciones)).
+6. Instálala en el iPhone y activa las notificaciones ([§10](#10-instalar-en-el-iphone-y-activar-las-notificaciones)).
 7. (Opcional) Configura Resend para recuperar contraseñas ([§8](#8-emails-con-resend)).
+8. (Opcional) Configura la IA y las fotos de Comida ([§9](#9-comida-ia-anthropic-y-fotos-cloudflare-r2)).
 
 ## 2. Variables de entorno
 
@@ -71,9 +83,17 @@ marca **Production, Preview y Development** y vuelve a desplegar después de cam
 | `ALLOW_SIGNUP` | No | `true` (por defecto): registro abierto. `false`: cerrado. | `true` |
 | `RESEND_API_KEY` | Para emails | API key de Resend ([§8](#8-emails-con-resend)). **Secreta.** | `re_…` |
 | `EMAIL_FROM` | Para emails | Remitente, con un dominio verificado en Resend. | `Antola <no-reply@tudominio.com>` |
+| `ANTHROPIC_API_KEY` | Para la IA | Estimación de calorías y macros de las comidas ([§9](#9-comida-ia-anthropic-y-fotos-cloudflare-r2)). **Secreta.** | `sk-ant-…` |
+| `ANTHROPIC_MODEL` | No | Modelo para estimar. Por defecto `claude-haiku-4-5-20251001`. | `claude-haiku-4-5-20251001` |
+| `R2_ACCOUNT_ID` | Para fotos | ID de la cuenta de Cloudflare. | `a1b2c3…` |
+| `R2_ACCESS_KEY_ID` | Para fotos | Access Key ID del token de R2. | `f3e…` |
+| `R2_SECRET_ACCESS_KEY` | Para fotos | Secret Access Key del token de R2. **Secreta.** | `9d1…` |
+| `R2_BUCKET` | Para fotos | Nombre del bucket (privado). | `antola` |
 
 Sin las variables de avisos la app funciona igual, pero no envía notificaciones; sin las de
-email, «He olvidado mi contraseña» no llega a enviar el correo.
+email, «He olvidado mi contraseña» no llega a enviar el correo. Sin `ANTHROPIC_API_KEY`, las
+comidas se apuntan con sus valores a mano; sin las de R2, se describen con texto (sin foto).
+`/api/salud` dice qué variables están puestas (nunca sus valores).
 
 ## 3. Claves VAPID y CRON_SECRET
 
@@ -110,7 +130,7 @@ También vale `npx web-push generate-vapid-keys` para las VAPID y
 4. Úsala como `DATABASE_URL`.
 
 **No uses la *Direct connection*** (`db.<ref>.supabase.co`): solo funciona por IPv6 y
-Vercel no puede conectarse. Las tablas se crean solas (ver [§14](#14-cómo-funciona-por-dentro)).
+Vercel no puede conectarse. Las tablas se crean solas (ver [§15](#15-cómo-funciona-por-dentro)).
 
 También funciona con cualquier PostgreSQL 14+ (Neon, Render, local…).
 
@@ -154,6 +174,9 @@ internos, sino el cron externo de [§7](#7-programar-los-avisos-con-cron-joborg)
  "descartados":0,"dispositivosBorrados":0}
 ```
 
+La respuesta incluye también `"comida":{"agua":…,"pesaje":…}`: los recordatorios de beber
+agua y de pesarse salen de esta misma llamada.
+
 - `401 Clave incorrecta` → la `key` no coincide con `CRON_SECRET`.
 - `"clavesVapid": false` → faltan las variables VAPID.
 
@@ -172,7 +195,54 @@ envía dos veces el mismo aviso. Con Vercel también se puede usar *Vercel Cron*
 
 El email de recuperación lleva un enlace que **caduca en 1 hora** y **solo sirve una vez**.
 
-## 9. Instalar en el iPhone y activar las notificaciones
+## 9. Comida: IA (Anthropic) y fotos (Cloudflare R2)
+
+Las dos cosas son opcionales: sin ellas, Comida funciona apuntando los valores a mano o
+describiendo la comida con texto.
+
+**Estimación con IA (Anthropic)**
+1. En [console.anthropic.com](https://console.anthropic.com) → **API Keys → Create Key**.
+   Cópiala en `ANTHROPIC_API_KEY` (solo en el servidor: nunca llega al navegador).
+2. En **Billing**, añade saldo y pon un **límite de gasto mensual**.
+3. (Opcional) `ANTHROPIC_MODEL` para otro modelo. Por defecto, `claude-haiku-4-5-20251001`,
+   rápido y barato.
+
+- Cada persona tiene un máximo de **20 estimaciones al día**; después puede seguir apuntando
+  a mano. Se puede desactivar en *Comida → Ajustes*.
+- La IA devuelve cada alimento con **rangos** (mínimo y máximo) y su confianza; la app guarda
+  la estimación completa y los puntos medios para sumar. Se puede corregir («era media
+  ración») y vuelve a estimar.
+- Lo que escribe el usuario se trata como datos, nunca como instrucciones para la IA.
+
+**Fotos (Cloudflare R2)**
+1. En Cloudflare → **R2 → Create bucket** (p. ej. `antola`). Déjalo **privado**: sin acceso
+   público ni dominio propio.
+2. **R2 → Manage API tokens → Create API token** con permiso **Object Read & Write** solo para
+   ese bucket. Copia el *Access Key ID* y el *Secret Access Key*.
+3. El *Account ID* está en la portada de R2.
+4. Pon `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` y `R2_BUCKET` y redespliega.
+   Comprueba en `/api/salud` que aparecen.
+
+- El móvil reduce la foto (máx. 1280 px, WebP o JPEG) y le quita los metadatos (GPS
+  incluido) antes de subirla. El servidor comprueba que es una imagen real (máx. 5 MB).
+- Se guardan en `users/{userId}/meals/{id}` y solo se ven a través de
+  `/api/nutrition/photos/…`, que comprueba la sesión y que la foto es tuya. No hay enlaces
+  públicos.
+- Borrar una comida borra su foto; borrar la cuenta borra **todo** lo que hay en
+  `users/{userId}/` antes de borrar los datos.
+
+**Cálculos y límites de salud**
+- TMB con Mifflin-St Jeor, gasto diario con el factor de actividad y 7700 kcal por kg para el
+  ritmo. Desde los 13 años; a los menores de 18 se les recomienda hablarlo con su médico.
+- Nunca por debajo de la TMB, nunca más de un 1 % del peso por semana, sin bajar de peso con
+  un IMC menor de 18,5 ni un peso objetivo por debajo de ese IMC.
+- Si la tendencia cambia 2 kg desde el último cálculo, Antola propone recalcular; si baja
+  más de un 1 % por semana dos semanas seguidas, recomienda ir más despacio.
+- XP solo por registrar y cuidarse (3 comidas, agua, proteína, hambre y saciedad, pesarse),
+  y solo hoy o ayer. Nunca por comer poco ni bajar rápido, y nunca se restan.
+- Sin rojo ni mensajes de «te has pasado»: por encima del objetivo se dice en color neutro.
+
+## 10. Instalar en el iPhone y activar las notificaciones
 
 Necesitas **iOS 16.4 o posterior**. En el iPhone las notificaciones web solo funcionan con
 la app instalada en la pantalla de inicio.
@@ -194,7 +264,7 @@ Al tocar una notificación se abre la tarea o el evento con botones rápidos:
 **Hecho**, **Posponer 15 min**, **Posponer 1 h** y **Mañana** (iOS no admite botones dentro
 de las notificaciones web). El número del icono muestra las tareas pendientes de hoy.
 
-## 10. Administración
+## 11. Administración
 
 La cuenta cuyo email coincide con `ADMIN_EMAIL` ve **Menú → Administración** (`/admin`):
 
@@ -202,10 +272,11 @@ La cuenta cuyo email coincide con `ADMIN_EMAIL` ve **Menú → Administración**
 - lista con email, fecha de registro y última actividad, con buscador;
 - **desactivar / reactivar** cuentas (desactivar cierra todas sus sesiones al momento).
 
-El administrador **no puede ver tareas, hábitos, eventos ni ningún otro contenido**. Para
+El administrador **no puede ver tareas, hábitos, eventos, comidas, pesos ni ningún otro
+contenido**. Para
 cualquier otra cuenta, `/admin` responde 404.
 
-## 11. Seguridad
+## 12. Seguridad
 
 **Aislamiento de datos**
 - Todas las tablas de contenido tienen `userId` con índice y borrado en cascada.
@@ -215,6 +286,12 @@ cualquier otra cuenta, `/admin` responde 404.
   usuario y responde **404** si no (no se distingue entre «no existe» y «es de otro»).
 - Los ids que llegan en el cuerpo (proyecto, objetivo…) también se validan
   (`lib/data/ownership.ts`).
+
+**Datos de salud (Comida y Peso)**
+- Perfil, comidas, fotos, agua y pesajes son privados de cada cuenta, entran en «Exportar mis
+  datos» (las fotos, como enlaces que solo funcionan con tu sesión) y se borran al eliminar la
+  cuenta, fotos de R2 incluidas.
+- Las claves de Anthropic y R2 solo existen en el servidor.
 
 **Sesiones y acceso**
 - Contraseñas con bcrypt. Sesiones en la BD; en la cookie solo va un token aleatorio cuyo
@@ -236,10 +313,10 @@ cualquier otra cuenta, `/admin` responde 404.
   service worker, `/api/cron/tick` (con su clave) y `/api/salud` (sin datos de usuarios).
 - El service worker **no cachea** páginas ni respuestas de la API (datos privados).
 
-## 12. Tests
+## 13. Tests
 
 ```bash
-npm test                 # unitarios: fechas, recurrencia, horarios, "no molestar", gráficas…
+npm test                 # unitarios: fechas, recurrencia, horarios, "no molestar", gráficas, Comida y Antola…
 npm run test:security    # aislamiento entre usuarios, contra un servidor en marcha
 ```
 
@@ -263,7 +340,7 @@ TEST_BASE_URL=http://localhost:3000 npm run test:security
 > Crean dos usuarios de prueba (`…@aislamiento.test`) y los borran al terminar. Aun así,
 > lánzalas contra una base de datos de pruebas, no contra producción.
 
-## 13. Desarrollo local
+## 14. Desarrollo local
 
 Requisitos: Node 24 y PostgreSQL.
 
@@ -284,7 +361,7 @@ Scripts útiles:
 | `npm run dev` | Servidor de desarrollo |
 | `npm run build` / `npm start` | Compilar (aplica migraciones si puede) y arrancar |
 | `npm run typecheck` | Tipos de rutas + TypeScript |
-| `npm test` / `npm run test:security` | Tests (ver [§12](#12-tests)) |
+| `npm test` / `npm run test:security` | Tests (ver [§13](#13-tests)) |
 | `npm run secrets` | Genera claves VAPID y `CRON_SECRET` |
 | `npm run icons` | Regenera los iconos de la PWA |
 | `npm run db:migrate` | Nueva migración de Prisma (desarrollo) |
@@ -293,14 +370,16 @@ Scripts útiles:
 (Prisma, esbuild…) están autorizados en `allowScripts` de `package.json`. Si añades una
 dependencia que los necesite: `npm install-scripts approve <paquete> --no-allow-scripts-pin`.
 
-## 14. Cómo funciona por dentro
+## 15. Cómo funciona por dentro
 
 ```
 app/(auth)/        login, registro, recuperar, restablecer, privacidad (públicas)
 app/(app)/         pantallas de la app (exigen sesión y haber completado la bienvenida)
 app/api/           endpoints (withUser / withPublic en lib/api.ts)
 lib/data/          consultas a la BD, siempre filtradas por userId
-lib/notifications/ programador de avisos (timing, textos, envío, tick)
+lib/notifications/ programador de avisos (timing, textos, envío, tick, agua y pesaje)
+lib/nutrition/     Comida: cálculos, estimación con IA, fotos (R2), peso, análisis
+lib/antola/        Antola: XP, niveles, logros, retos, tienda y frases
 lib/auth/          sesiones, contraseñas, límites de intentos, recuperación, admin
 proxy.ts           redirige al login si no hay cookie (la sesión se valida en el servidor)
 public/sw.js       service worker: push, clic en notificación, caché de estáticos
@@ -329,7 +408,13 @@ próximo disparo en UTC (`Task.remindAt`, `Event.remindAt`, `Habit.nextReminderA
    suscripciones que responden 404/410 y programa el siguiente disparo;
 5. cada hora limpia registros viejos, sesiones caducadas y enlaces usados.
 
-## 15. Solución de problemas
+Los recordatorios de Comida (`lib/notifications/nutrition-tick.ts`) usan
+`NutritionProfile.nextWaterAt` y `nextWeighInAt`: el de agua solo avisa si vas por detrás de
+lo esperado a esa hora (reparto entre tu hora de despertar y la de dormir), como mucho cada
+2 horas; el de pesaje llega los días elegidos 15 minutos después de despertar, si aún no te
+has pesado.
+
+## 16. Solución de problemas
 
 | Síntoma | Causa probable | Solución |
 |---|---|---|
@@ -342,3 +427,7 @@ próximo disparo en UTC (`Task.remindAt`, `Event.remindAt`, `Habit.nextReminderA
 | El cron responde `401` | `key` distinta de `CRON_SECRET` | Copia de nuevo la clave en cron-job.org |
 | No llega el email de recuperación | Falta Resend o el dominio no está verificado | [§8](#8-emails-con-resend); mira también el spam |
 | «Demasiados intentos» | Bloqueo por fallos de login | Espera 15 minutos o recupera la contraseña |
+| «Las fotos aún no están configuradas» | Faltan las variables de R2 | [§9](#9-comida-ia-anthropic-y-fotos-cloudflare-r2) y comprueba `/api/salud` |
+| «La estimación con IA no está configurada» | Falta `ANTHROPIC_API_KEY` | [§9](#9-comida-ia-anthropic-y-fotos-cloudflare-r2) |
+| Las comidas quedan «sin estimar» con un aviso | Clave sin saldo, límite de gasto o modelo no disponible | Revisa Billing y Limits en la consola de Anthropic |
+| «No se han podido borrar tus fotos» al borrar la cuenta | R2 no responde o el token no tiene permiso de borrado | Token con *Object Read & Write*; inténtalo de nuevo (no se borra nada hasta que funcione) |

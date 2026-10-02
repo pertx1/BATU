@@ -50,12 +50,13 @@ export const GET = withUser(async (_req, { userId, user }) => {
   ]);
 
   // Nutrición y peso (datos de salud).
-  const [nutrition, meals, favorites, water, weights] = await Promise.all([
+  const [nutrition, meals, favorites, water, weights, aiUsage] = await Promise.all([
     db.nutritionProfile.findUnique({ where }),
     db.mealLog.findMany({ where, orderBy: { eatenAt: "asc" } }),
     db.favoriteMeal.findMany({ where, orderBy: { createdAt: "asc" } }),
     db.waterLog.findMany({ where, orderBy: { createdAt: "asc" }, select: { day: true, ml: true, createdAt: true } }),
     db.weightLog.findMany({ where, orderBy: { day: "asc" }, select: { day: true, kg: true, createdAt: true } }),
+    db.aiUsage.findMany({ where, orderBy: { day: "asc" }, select: { day: true, count: true } }),
   ]);
   // Las fotos se descargan desde estos enlaces, que solo funcionan con tu sesión.
   const photoUrl = (key: string | null, id: string, kind: "meal" | "favorite") =>
@@ -92,6 +93,7 @@ export const GET = withUser(async (_req, { userId, user }) => {
       comidasHabituales: strip(favorites).map(({ photoKey, ...f }) => ({ ...f, foto: photoUrl(photoKey, f.id, "favorite") })),
       agua: water.map((w) => ({ ...w, day: day(w.day) })),
       pesajes: weights.map((w) => ({ ...w, day: day(w.day) })),
+      estimacionesConIA: aiUsage.map((u) => ({ ...u, day: day(u.day) })),
     },
     antola: {
       estadisticas: stats

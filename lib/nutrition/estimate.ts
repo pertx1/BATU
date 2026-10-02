@@ -122,6 +122,21 @@ export function scaleFood(f: FoodItem, factor: number): FoodItem {
   return { ...f, kcal: s(f.kcal), protein: s(f.protein), carbs: s(f.carbs), fat: s(f.fat), fiber: s(f.fiber) };
 }
 
+const PORTION = /\s*×(\d+(?:[.,]\d+)?)$/;
+const portionFmt = new Intl.NumberFormat("es-ES", { maximumFractionDigits: 2 });
+
+/**
+ * Texto de la cantidad tras cambiar la ración: «1 plato» ×1,5 → «1 plato ×1,5».
+ * Si ya llevaba un factor, se combina en vez de acumularse
+ * («1 plato ×1,5» ×2 → «1 plato ×3»; si vuelve a ×1, se quita).
+ */
+export function scaledQuantity(quantity: string, factor: number): string {
+  const m = quantity.match(PORTION);
+  const base = m ? quantity.slice(0, m.index).trim() : quantity.trim();
+  const total = Math.round((m ? Number(m[1].replace(",", ".")) : 1) * factor * 100) / 100;
+  return total === 1 ? base : `${base} ×${portionFmt.format(total)}`.trim();
+}
+
 /** Alimento con un valor exacto (mínimo = máximo), para añadir a mano. */
 export function exactFood(name: string, quantity: string, v: { kcal: number; protein: number; carbs: number; fat: number; fiber: number }): FoodItem {
   const e = (n: number) => ({ min: n, max: n });

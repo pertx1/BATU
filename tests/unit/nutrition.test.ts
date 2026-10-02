@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { addDays, startOfWeekMonday } from "@/lib/dates";
 import { bestStreak, consistencyGrid, daysForAverage, hungerAnalysis, lastDays, macroSplit, parseRange, slotForMinutes, toBars, type HungerEntry } from "@/lib/nutrition/analysis";
-import { midpoints, normalizeEstimate } from "@/lib/nutrition/estimate";
+import { midpoints, normalizeEstimate, scaledQuantity } from "@/lib/nutrition/estimate";
 import { sniffImage } from "@/lib/nutrition/photo";
 import { formatChange, losingTooFast, progressKg, projection, reachedTarget, weeklyRate, weightMilestones, weightSummary } from "@/lib/nutrition/weight";
 import { expectedWater, nextWaterCheck, nextWeighInAt, shouldRemindWater } from "@/lib/nutrition/reminders";
@@ -443,5 +443,15 @@ describe("recordatorios de agua y pesaje", () => {
     expect(local(nextWeighInAt(3, 420, tz, new Date("2026-10-05T10:00:00Z"))!)).toBe("Wed 2026-10-07 07:15");
     expect(local(nextWeighInAt(2, 450, tz, new Date("2026-10-05T10:00:00Z"))!)).toBe("Thu 2026-10-08 07:45");
     expect(nextWeighInAt(0, 450, tz, now)).toBeNull();
+  });
+});
+
+describe("ración de un alimento", () => {
+  it("combina el factor en vez de acumularlo", () => {
+    expect(scaledQuantity("1 plato", 1.5)).toBe("1 plato ×1,5");
+    expect(scaledQuantity("1 plato ×1,5", 2)).toBe("1 plato ×3");
+    expect(scaledQuantity("1 plato ×1,5", 1 / 1.5)).toBe("1 plato");
+    expect(scaledQuantity("200 g ×0,5", 0.5)).toBe("200 g ×0,25");
+    expect(scaledQuantity("", 2)).toBe("×2");
   });
 });

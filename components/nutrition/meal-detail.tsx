@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Minus, Plus, RefreshCw, Sparkles, Star, Trash2, X } from "lucide-react";
 import { api } from "@/lib/client/api";
-import { CONFIDENCE_LABEL, exactFood, scaleFood, totalsOf, type FoodItem, type Range } from "@/lib/nutrition/estimate";
+import { CONFIDENCE_LABEL, exactFood, scaledQuantity, scaleFood, totalsOf, type FoodItem, type Range } from "@/lib/nutrition/estimate";
 import { MEAL_TYPE_INFO, MEAL_TYPES, type MealType } from "@/lib/nutrition/meals";
 import { NUTRIENT } from "@/lib/nutrition/nutrients";
 import type { MealView } from "@/lib/data/nutrition";
@@ -78,7 +78,7 @@ function DetailBody({ meal, hideNumbers, aiAvailable, onClose }: { meal: MealVie
     if (!dirty) setDrafts(initialFoods(meal).map((food) => ({ food, factor: 1 })));
   }, [meal, dirty]);
 
-  const foods = drafts.map((d) => (d.factor === 1 ? d.food : { ...scaleFood(d.food, d.factor), quantity: `${d.food.quantity} ${factorText(d.factor)}`.trim() }));
+  const foods = drafts.map((d) => (d.factor === 1 ? d.food : { ...scaleFood(d.food, d.factor), quantity: scaledQuantity(d.food.quantity, d.factor) }));
   const totals = totalsOf(foods);
 
   async function patch(body: Record<string, unknown>, ok?: string) {
