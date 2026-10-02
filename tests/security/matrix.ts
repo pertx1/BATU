@@ -102,6 +102,7 @@ export const SELF_ENDPOINTS: Pick<Attack, "method" | "route">[] = [
   { method: "POST", route: "/api/antola/message" },
   { method: "POST", route: "/api/antola/shop" },
   { method: "POST", route: "/api/antola/wardrobe" },
+  { method: "POST", route: "/api/nutrition/profile" },
   { method: "POST", route: "/api/onboarding" },
   { method: "POST", route: "/api/push/subscribe" },
   { method: "POST", route: "/api/push/test" },

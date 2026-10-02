@@ -12,7 +12,8 @@ export function goalProgress(input: {
   tasksTotal: number;
 }): number {
   let p = 0;
-  if (input.type === "NUMERIC") {
+  // El objetivo de peso funciona como uno numérico (inicio → actual → objetivo).
+  if (input.type === "NUMERIC" || input.type === "WEIGHT") {
     const start = input.startValue ?? 0;
     const target = input.targetValue ?? 0;
     const current = input.currentValue ?? start;
@@ -41,7 +42,7 @@ export function goalProgressLabel(input: {
   tasksDone: number;
   tasksTotal: number;
 }): string {
-  if (input.type === "NUMERIC") {
+  if (input.type === "NUMERIC" || input.type === "WEIGHT") {
     const current = input.currentValue ?? input.startValue ?? 0;
     return `${formatNumber(current)} / ${formatNumber(input.targetValue ?? 0)}${input.unit ? ` ${input.unit}` : ""}`;
   }
@@ -50,4 +51,4 @@ export function goalProgressLabel(input: {
 }
 
 export const GOAL_STATUS_LABEL = { ACTIVE: "Activo", PAUSED: "Pausado", ACHIEVED: "Conseguido" } as const;
-export const GOAL_TYPE_LABEL = { NUMERIC: "Numérico", MILESTONES: "Por hitos", TASKS: "Por tareas" } as const;
+export const GOAL_TYPE_LABEL = { NUMERIC: "Numérico", MILESTONES: "Por hitos", TASKS: "Por tareas", WEIGHT: "Peso" } as const;

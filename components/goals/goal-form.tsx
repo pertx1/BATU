@@ -9,7 +9,7 @@ import type { GoalType, GoalView, ProjectView } from "@/lib/types";
 import { Segmented } from "@/components/ui/controls";
 import { useToast } from "@/components/ui/toast";
 
-const TYPE_HELP: Record<GoalType, string> = {
+const TYPE_HELP: Record<Exclude<GoalType, "WEIGHT">, string> = {
   NUMERIC: "Un número que quieres alcanzar: 1000 seguidores, 10 € al día, 5 kg…",
   MILESTONES: "Una lista de pasos que vas marcando.",
   TASKS: "El progreso es el % de tareas vinculadas completadas.",
@@ -38,7 +38,9 @@ export function GoalForm({ goal, projects }: { goal?: GoalView; projects: Projec
   const [why, setWhy] = useState(goal?.why ?? "");
   const [deadline, setDeadline] = useState(goal?.deadline ?? "");
   const [projectId, setProjectId] = useState(goal?.project?.id ?? "");
-  const [type, setType] = useState<GoalType>(goal?.type ?? "NUMERIC");
+  // El objetivo de peso lo gestiona Comida → Peso: aquí solo se editan los textos.
+  const isWeight = goal?.type === "WEIGHT";
+  const [type, setType] = useState<Exclude<GoalType, "WEIGHT">>(goal && goal.type !== "WEIGHT" ? goal.type : "NUMERIC");
   const [start, setStart] = useState(numberToInput(goal?.startValue ?? null));
   const [target, setTarget] = useState(numberToInput(goal?.targetValue ?? null));
   const [unit, setUnit] = useState(goal?.unit ?? "");
@@ -56,24 +58,32 @@ export function GoalForm({ goal, projects }: { goal?: GoalView; projects: Projec
     e.preventDefault();
     const startValue = parseNumber(start);
     const targetValue = parseNumber(target);
-    if (type === "NUMERIC") {
+    if (type === "NUMERIC" && !isWeight) {
       if (targetValue == null || Number.isNaN(targetValue)) return toast.error("Indica la meta (un número).");
       if (Number.isNaN(startValue)) return toast.error("El valor inicial debe ser un número.");
     }
     setBusy(true);
     const pendingMilestone = newMilestone.trim();
-    const body = {
-      title: title.trim(),
-      description: description.trim() || null,
-      why: why.trim() || null,
-      deadline: deadline || null,
-      projectId: projectId || null,
-      type,
-      ...(type === "NUMERIC" ? { startValue: startValue ?? 0, targetValue, unit: unit.trim() || null } : {}),
-      ...(!goal && type === "MILESTONES"
-        ? { milestones: pendingMilestone ? [...milestones, pendingMilestone] : milestones }
-        : {}),
-    };
+    const body = isWeight
+      ? {
+          title: title.trim(),
+          description: description.trim() || null,
+          why: why.trim() || null,
+          deadline: deadline || null,
+          projectId: projectId || null,
+        }
+      : {
+          title: title.trim(),
+          description: description.trim() || null,
+          why: why.trim() || null,
+          deadline: deadline || null,
+          projectId: projectId || null,
+          type,
+          ...(type === "NUMERIC" ? { startValue: startValue ?? 0, targetValue, unit: unit.trim() || null } : {}),
+          ...(!goal && type === "MILESTONES"
+            ? { milestones: pendingMilestone ? [...milestones, pendingMilestone] : milestones }
+            : {}),
+        };
     try {
       if (goal) {
         await api(`/api/goals/${goal.id}`, { method: "PATCH", body });
@@ -105,29 +115,48 @@ export function GoalForm({ goal, projects }: { goal?: GoalView; projects: Projec
         aria-label="Título"
       />
 
-      <div>
-        <span className="label">Tipo de progreso</span>
-        <Segmented
-          value={type}
-          onChange={setType}
-          options={[
-            { value: "NUMERIC", label: "Numérico" },
-            { value: "MILESTONES", label: "Hitos" },
-            { value: "TASKS", label: "Tareas" },
-          ]}
-        />
-        <p className="mt-1.5 text-sm text-muted">{TYPE_HELP[type]}</p>
-      </div>
+      {isWeight ? (
+        <p className="rounded-xl bg-surface-2 px-3 py-2 text-sm text-muted">
+          Objetivo de peso: el progreso sale de la tendencia de tus pesajes. El peso objetivo se cambia en Comida → Ajustes.
+        </p>
+      ) : (
+        <div>
+          <span className="label">Tipo de progreso</span>
+          <Segmented
+            value={type}
+            onChange={setType}
+            options={[
+              { value: "NUMERIC", label: "Numérico" },
+              { value: "MILESTONES", label: "Hitos" },
+              { value: "TASKS", label: "Tareas" },
+            ]}
+          />
+          <p className="mt-1.5 text-sm text-muted">{TYPE_HELP[type]}</p>
+        </div>
+      )}
 
-      {type === "NUMERIC" ? (
+      {type === "NUMERIC" && !isWeight ? (
         <div className="grid grid-cols-3 gap-2">
           <label className="block">
             <span className="label">Inicio</span>
-            <input className="input" inputMode="decimal" placeholder="0" value={start} onChange={(e) => setStart(e.target.value)} />
+            <input
+              className="input"
+              inputMode="decimal"
+              placeholder="0"
+              value={start}
+              onChange={(e) => setStart(e.target.value)}
+            />
           </label>
           <label className="block">
             <span className="label">Meta</span>
-            <input className="input" inputMode="decimal" placeholder="1000" value={target} onChange={(e) => setTarget(e.target.value)} required />
+            <input
+              className="input"
+              inputMode="decimal"
+              placeholder="1000"
+              value={target}
+              onChange={(e) => setTarget(e.target.value)}
+              required
+            />
           </label>
           <label className="block">
             <span className="label">Unidad</span>
@@ -136,7 +165,7 @@ export function GoalForm({ goal, projects }: { goal?: GoalView; projects: Projec
         </div>
       ) : null}
 
-      {type === "MILESTONES" && !goal ? (
+      {type === "MILESTONES" && !goal && !isWeight ? (
         <div>
           <span className="label">Hitos</span>
           {milestones.length ? (
@@ -145,7 +174,12 @@ export function GoalForm({ goal, projects }: { goal?: GoalView; projects: Projec
                 <li key={i} className="flex items-center gap-2 rounded-xl bg-surface-2 px-3 py-2">
                   <span className="w-5 text-sm text-muted">{i + 1}.</span>
                   <span className="flex-1">{m}</span>
-                  <button type="button" aria-label="Quitar hito" onClick={() => setMilestones(milestones.filter((_, j) => j !== i))} className="text-muted">
+                  <button
+                    type="button"
+                    aria-label="Quitar hito"
+                    onClick={() => setMilestones(milestones.filter((_, j) => j !== i))}
+                    className="text-muted"
+                  >
                     <X size={18} />
                   </button>
                 </li>

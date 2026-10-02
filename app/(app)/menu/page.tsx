@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BarChart3, ChevronRight, ClipboardCheck, Folder, Lightbulb, Settings, ShieldCheck, UserRound } from "lucide-react";
+import { BarChart3, ChevronRight, ClipboardCheck, Folder, Lightbulb, Settings, ShieldCheck, UserRound, Utensils } from "lucide-react";
 import { requireUser } from "@/lib/auth/session";
 import { antolaChrome } from "@/lib/gamification";
 import { Antola } from "@/components/antola/antola";
@@ -10,6 +10,7 @@ import { PageBody, PageHeader } from "@/components/app/page-header";
 export const metadata: Metadata = { title: "Menú" };
 
 const ITEMS = [
+  { href: "/comida", label: "Comida", icon: Utensils },
   { href: "/ideas", label: "Ideas", icon: Lightbulb },
   { href: "/proyectos", label: "Proyectos", icon: Folder },
   { href: "/estadisticas", label: "Estadísticas", icon: BarChart3 },

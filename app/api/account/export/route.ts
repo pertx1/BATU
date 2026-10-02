@@ -49,6 +49,18 @@ export const GET = withUser(async (_req, { userId, user }) => {
     db.weeklyChallenge.findMany({ where, orderBy: { weekStart: "asc" } }),
   ]);
 
+  // Nutrición y peso (datos de salud).
+  const [nutrition, meals, favorites, water, weights] = await Promise.all([
+    db.nutritionProfile.findUnique({ where }),
+    db.mealLog.findMany({ where, orderBy: { eatenAt: "asc" } }),
+    db.favoriteMeal.findMany({ where, orderBy: { createdAt: "asc" } }),
+    db.waterLog.findMany({ where, orderBy: { createdAt: "asc" }, select: { day: true, ml: true, createdAt: true } }),
+    db.weightLog.findMany({ where, orderBy: { day: "asc" }, select: { day: true, kg: true, createdAt: true } }),
+  ]);
+  // Las fotos se descargan desde estos enlaces, que solo funcionan con tu sesión.
+  const photoUrl = (key: string | null, id: string, kind: "meal" | "favorite") =>
+    key ? `/api/nutrition/photos/${kind}/${id}` : null;
+
   // Sin el userId repetido en cada registro: todo es de esta cuenta.
   const strip = <T extends { userId?: string }>(rows: T[]) => rows.map(({ userId: _u, ...rest }) => rest);
 
@@ -74,6 +86,13 @@ export const GET = withUser(async (_req, { userId, user }) => {
     })),
     revisionesSemanales: strip(reviews).map((r) => ({ ...r, weekStart: day(r.weekStart) })),
     ideas: strip(ideas),
+    nutricion: {
+      perfil: nutrition ? (({ userId: _u, ...n }) => n)(nutrition) : null,
+      comidas: strip(meals).map(({ photoKey, ...m }) => ({ ...m, day: day(m.day), foto: photoUrl(photoKey, m.id, "meal") })),
+      comidasHabituales: strip(favorites).map(({ photoKey, ...f }) => ({ ...f, foto: photoUrl(photoKey, f.id, "favorite") })),
+      agua: water.map((w) => ({ ...w, day: day(w.day) })),
+      pesajes: weights.map((w) => ({ ...w, day: day(w.day) })),
+    },
     antola: {
       estadisticas: stats
         ? (({ userId: _u, lastProductiveDay, lastClosedDay, ...s }) => ({ ...s, lastProductiveDay: day(lastProductiveDay), lastClosedDay: day(lastClosedDay) }))(stats)

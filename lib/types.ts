@@ -81,7 +81,7 @@ export const EVENT_REMINDER_OPTIONS: { value: number; label: string }[] = [
 ];
 
 export type GoalStatus = "ACTIVE" | "PAUSED" | "ACHIEVED";
-export type GoalType = "NUMERIC" | "MILESTONES" | "TASKS";
+export type GoalType = "NUMERIC" | "MILESTONES" | "TASKS" | "WEIGHT";
 
 export type GoalView = {
   id: string;

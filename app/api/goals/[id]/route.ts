@@ -15,6 +15,29 @@ export const PATCH = withUser<Params>(async (req, { userId, user }, { id }) => {
   if (!current) throw notFound();
   if (body.projectId !== undefined) await assertOwnProject(userId, body.projectId);
 
+  // El de peso solo admite cambiar textos, fecha, proyecto y estado.
+  if (current.type === "WEIGHT") {
+    const status = body.status ?? current.status;
+    await db.goal.update({
+      where: { id, userId },
+      data: {
+        title: body.title,
+        description: blankToNull(body.description),
+        why: blankToNull(body.why),
+        deadline: body.deadline === undefined ? undefined : body.deadline ? dateStrToDb(body.deadline) : null,
+        projectId: body.projectId,
+        status,
+        achievedAt: status === "ACHIEVED" ? (current.achievedAt ?? new Date()) : null,
+        ...(status === "ACHIEVED" ? { isFocus: false } : {}),
+      },
+    });
+    const gamification =
+      (status === "ACHIEVED") !== (current.status === "ACHIEVED")
+        ? await award(user, { type: "goal", goalId: id, achieved: status === "ACHIEVED" })
+        : null;
+    return NextResponse.json({ ok: true, gamification });
+  }
+
   const type = body.type ?? current.type;
   const numeric = type === "NUMERIC";
   const targetValue = body.targetValue !== undefined ? body.targetValue : current.targetValue;

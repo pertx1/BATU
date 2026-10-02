@@ -52,6 +52,12 @@ model User {
   items             UserItem[]
   challenges        WeeklyChallenge[]
   antolaMessages    AntolaMessageLog[]
+  nutritionProfile  NutritionProfile?
+  meals             MealLog[]
+  favoriteMeals     FavoriteMeal[]
+  waterLogs         WaterLog[]
+  weightLogs        WeightLog[]
+  aiUsage           AiUsage[]
 }
 
 model Session {
@@ -306,6 +312,7 @@ enum GoalType {
   NUMERIC
   MILESTONES
   TASKS
+  WEIGHT // creado en el onboarding de nutrición; progreso según la tendencia de peso
 }
 
 model Goal {
@@ -416,6 +423,8 @@ enum NotificationKind {
   STREAK_RISK
   REWARD
   MISS_YOU
+  WATER
+  WEIGH_IN
 }
 
 enum NotificationStatus {
@@ -474,6 +483,11 @@ enum XpKind {
   GOAL
   ACHIEVEMENT
   CHALLENGE
+  MEALS_DAY // al menos 3 comidas registradas en el día
+  WATER_GOAL
+  PROTEIN_GOAL
+  HUNGER // hambre antes y después de una comida (máx. 3 al día)
+  WEIGH_IN // pesarse (máx. 1 a la semana)
 }
 
 enum ChallengeKind {
@@ -585,4 +599,174 @@ model AntolaMessageLog {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, shownAt])
+}
+
+// ─── Nutrición y peso (datos de salud: privados, se exportan y se borran con la cuenta) ───
+
+enum Sex {
+  MALE
+  FEMALE
+  UNSPECIFIED // "Prefiero no decirlo" (solo cambia la fórmula)
+}
+
+enum ActivityLevel {
+  SEDENTARY
+  LIGHT
+  MODERATE
+  ACTIVE
+  VERY_ACTIVE
+}
+
+enum NutritionGoal {
+  LOSE_FAT
+  LOSE_WEIGHT
+  MAINTAIN
+  RECOMP
+  GAIN_MUSCLE
+  GAIN_WEIGHT
+}
+
+enum GoalPace {
+  GENTLE
+  RECOMMENDED
+  FAST
+}
+
+enum MealType {
+  BREAKFAST // desayuno
+  MIDMORNING // almuerzo (media mañana)
+  LUNCH // comida
+  SNACK // merienda
+  DINNER // cena
+  NIBBLE // picoteo
+}
+
+enum EstimateStatus {
+  NONE // valores a mano o sin estimar
+  PENDING
+  DONE
+  FAILED
+}
+
+model NutritionProfile {
+  userId         String        @id
+  sex            Sex
+  birthYear      Int
+  heightCm       Float
+  activity       ActivityLevel
+  goal           NutritionGoal
+  pace           GoalPace?
+  targetWeightKg Float?
+  weightAtCalc   Float // peso (tendencia) usado en el último cálculo
+  bmr            Int
+  tdee           Int
+  kcalTarget     Int
+  proteinG       Int
+  carbsG         Int
+  fatG           Int
+  fiberG         Int
+  waterMl        Int
+  manualTargets  Boolean       @default(false)
+  calculatedAt   DateTime
+  aiEnabled      Boolean       @default(true)
+  hideNumbers    Boolean       @default(false)
+  glassMl        Int           @default(250)
+  bottleMl       Int           @default(500)
+  wakeTime       Int           @default(450) // 07:30, minutos locales
+  sleepTime      Int           @default(1380) // 23:00
+  waterReminders Boolean       @default(true)
+  weighInPerWeek Int           @default(1) // 0 = sin recordatorio
+  nextWaterAt    DateTime?
+  nextWeighInAt  DateTime?
+  goalId         String?       @unique // el objetivo "Peso" de Objetivos
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([nextWaterAt])
+  @@index([nextWeighInAt])
+}
+
+model MealLog {
+  id            String         @id @default(cuid())
+  userId        String
+  day           DateTime       @db.Date // día local
+  eatenAt       DateTime
+  type          MealType
+  name          String?
+  description   String?
+  photoKey      String? // users/{userId}/meals/{id}.jpg en R2
+  hungerBefore  Int? // 1–5
+  fullnessAfter Int? // 1–5
+  status        EstimateStatus @default(NONE)
+  estimate      Json? // alimentos, rangos, totales, confianza y suposiciones
+  confidence    String?
+  kcal          Int            @default(0) // puntos medios, para consultas rápidas
+  proteinG      Float          @default(0)
+  carbsG        Float          @default(0)
+  fatG          Float          @default(0)
+  fiberG        Float          @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, day])
+}
+
+model FavoriteMeal {
+  id         String    @id @default(cuid())
+  userId     String
+  name       String
+  type       MealType?
+  photoKey   String?
+  estimate   Json
+  kcal       Int
+  proteinG   Float
+  carbsG     Float
+  fatG       Float
+  fiberG     Float
+  useCount   Int       @default(0)
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model WaterLog {
+  id        String   @id @default(cuid())
+  userId    String
+  day       DateTime @db.Date
+  ml        Int
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, day])
+}
+
+model WeightLog {
+  id        String   @id @default(cuid())
+  userId    String
+  day       DateTime @db.Date
+  kg        Float
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, day]) // un pesaje por día (el último lo sustituye)
+}
+
+/// Límite de estimaciones con IA por día.
+model AiUsage {
+  userId String
+  day    DateTime @db.Date
+  count  Int      @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, day])
 }
