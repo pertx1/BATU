@@ -19,6 +19,7 @@ export type VictimIds = {
   review: string;
   idea: string;
   water: string;
+  meal: string;
   userId: string;
   pushEndpoint: string;
 };
@@ -70,6 +71,8 @@ export const FOREIGN_ID_ATTACKS: Attack[] = [
   { method: "DELETE", route: "/api/ideas/[id]", path: (v) => `/api/ideas/${v.idea}`, expect: NOT_FOUND },
   { method: "POST", route: "/api/ideas/[id]/task", path: (v) => `/api/ideas/${v.idea}/task`, expect: NOT_FOUND },
   { method: "DELETE", route: "/api/nutrition/water/[id]", path: (v) => `/api/nutrition/water/${v.water}`, expect: NOT_FOUND },
+  { method: "DELETE", route: "/api/nutrition/meals/[id]", path: (v) => `/api/nutrition/meals/${v.meal}`, expect: NOT_FOUND },
+  { method: "GET", route: "/api/nutrition/photos/[kind]/[id]", path: (v) => `/api/nutrition/photos/meal/${v.meal}`, expect: NOT_FOUND },
   // B no es admin: el panel no existe para él.
   { method: "POST", route: "/api/admin/users/[id]", path: (v) => `/api/admin/users/${v.userId}`, body: () => ({ disabled: true }), expect: NOT_FOUND },
 ];
@@ -106,6 +109,7 @@ export const SELF_ENDPOINTS: Pick<Attack, "method" | "route">[] = [
   { method: "POST", route: "/api/antola/wardrobe" },
   { method: "POST", route: "/api/nutrition/profile" },
   { method: "POST", route: "/api/nutrition/water" },
+  { method: "POST", route: "/api/nutrition/meals" },
   { method: "POST", route: "/api/onboarding" },
   { method: "POST", route: "/api/push/subscribe" },
   { method: "POST", route: "/api/push/test" },

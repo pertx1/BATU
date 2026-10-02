@@ -328,7 +328,7 @@ function MealRow({ meal, hideNumbers }: { meal: MealView; hideNumbers: boolean }
         ) : hideNumbers ? (
           <p className="mt-0.5 text-[15px] text-muted">{MEAL_TYPE_INFO[meal.type].label}</p>
         ) : meal.status === "FAILED" ? (
-          <p className="mt-0.5 text-[15px] text-muted">Sin estimar todavía</p>
+          <p className="mt-0.5 line-clamp-2 text-[14px] text-muted">{meal.error ?? "Sin estimar todavía"}</p>
         ) : (
           <>
             <p className="mt-0.5 flex items-center gap-1 font-semibold tabular-nums">

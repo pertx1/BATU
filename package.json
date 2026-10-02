@@ -16,6 +16,8 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
+    "@aws-sdk/client-s3": "^3.1145.0",
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.3",
     "canvas-confetti": "^1.9.4",

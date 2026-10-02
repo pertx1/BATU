@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { addDays } from "@/lib/dates";
+import { midpoints, normalizeEstimate } from "@/lib/nutrition/estimate";
+import { sniffImage } from "@/lib/nutrition/photo";
 import { formatLiters, formatWater, logStreak, mealTypeForMinutes, remaining, sumTotals } from "@/lib/nutrition/meals";
 import {
   bmi,
@@ -91,13 +93,14 @@ describe("límites de seguridad", () => {
     expect(p.kgPerWeek).toBeGreaterThanOrEqual(-0.6);
     expect(p.notes.join(" ")).toMatch(/1 %/);
   });
-  it("menores de 18: solo mantener", () => {
-    const opts = goalOptions({ age: 16, weightKg: 70, heightCm: 170 });
-    expect(opts.filter((o) => o.allowed).map((o) => o.goal)).toEqual(["MAINTAIN"]);
-    const p = computePlan({ ...base, age: 16, goal: "LOSE_FAT", pace: "FAST", targetWeightKg: 70 });
-    expect(p.goal).toBe("MAINTAIN");
-    expect(p.kcal).toBe(Math.round(p.tdee / 10) * 10);
-    expect(p.notes[0]).toMatch(/18 años/);
+  it("la edad no limita el objetivo (desde los 13 años): solo cambia la TMB", () => {
+    const opts = goalOptions({ age: 15, weightKg: 70, heightCm: 170 });
+    expect(opts.every((o) => o.allowed)).toBe(true);
+    const p = computePlan({ ...base, age: 15, goal: "LOSE_FAT", pace: "RECOMMENDED", targetWeightKg: 66 });
+    expect(p.goal).toBe("LOSE_FAT");
+    expect(p.kcal).toBeLessThan(Math.round(p.tdee / 10) * 10);
+    // Los demás límites siguen: nunca por debajo de la TMB.
+    expect(p.kcal).toBeGreaterThanOrEqual(p.bmr);
   });
   it("IMC menor de 18,5: no se puede perder grasa ni peso", () => {
     const opts = goalOptions({ age: 30, weightKg: 50, heightCm: 175 });
@@ -165,5 +168,47 @@ describe("diario de comidas", () => {
     expect(formatWater(750)).toBe("750 ml");
     expect(formatWater(1250)).toBe("1,25 L");
     expect(formatLiters(2000)).toBe("2");
+  });
+});
+
+describe("estimación de comidas", () => {
+  const r = (min: number, max: number) => ({ min, max });
+  const food = (over: Partial<Record<string, unknown>> = {}) => ({
+    name: "Lentejas",
+    quantity: "1 plato",
+    kcal: r(400, 500),
+    protein: r(20, 24),
+    carbs: r(50, 60),
+    fat: r(8, 12),
+    fiber: r(10, 14),
+    ...over,
+  });
+
+  it("sanea la respuesta de la IA: sin negativos, rangos ordenados y totales que cuadran", () => {
+    const e = normalizeEstimate({
+      name: "  Lentejas   con chorizo ",
+      foods: [food(), food({ name: "Chorizo", kcal: r(140, 110), fat: r(-3, 12), fiber: r(0, 0) })],
+      confidence: "media",
+      assumptions: ["He supuesto 1 cucharada de aceite", ""],
+    });
+    expect(e.name).toBe("Lentejas con chorizo");
+    expect(e.foods[1].kcal).toEqual({ min: 110, max: 140 });
+    expect(e.foods[1].fat).toEqual({ min: 0, max: 12 });
+    expect(e.totals.kcal).toEqual({ min: 510, max: 640 });
+    expect(e.assumptions).toEqual(["He supuesto 1 cucharada de aceite"]);
+    // Los anillos usan el punto medio
+    expect(midpoints(e)).toEqual({ kcal: 575, proteinG: 44, carbsG: 110, fatG: 16, fiberG: 12 });
+  });
+
+  it("acota valores absurdos", () => {
+    const e = normalizeEstimate({ name: "x", foods: [food({ kcal: r(0, 99999) })], confidence: "baja", assumptions: [] });
+    expect(e.foods[0].kcal.max).toBe(5000);
+  });
+
+  it("reconoce las fotos por sus primeros bytes", () => {
+    expect(sniffImage(new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0]))).toBe("image/jpeg");
+    expect(sniffImage(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0]))).toBe("image/png");
+    expect(sniffImage(new TextEncoder().encode("RIFF1234WEBPVP8 "))).toBe("image/webp");
+    expect(sniffImage(new TextEncoder().encode("<script>alert(1)</script>"))).toBeNull();
   });
 });

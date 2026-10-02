@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { addDays, dateStrToDb, dbToDateStr, formatTz, todayStr, type DateStr } from "@/lib/dates";
+import { failStaleEstimates } from "@/lib/nutrition/meal-service";
 import { logStreak, sumTotals, type MealType, type Totals } from "@/lib/nutrition/meals";
 
 export type MealView = {
@@ -11,6 +12,8 @@ export type MealView = {
   time: string; // "14:20", hora local
   hasPhoto: boolean;
   status: "NONE" | "PENDING" | "DONE" | "FAILED";
+  /** Mensaje amable si la estimación falló. */
+  error: string | null;
   kcal: number;
   proteinG: number;
   carbsG: number;
@@ -52,6 +55,7 @@ export async function getDiary(user: { id: string; timezone: string }, day: Date
   const profile = await db.nutritionProfile.findUnique({ where: { userId: user.id } });
   if (!profile) return null;
   const today = todayStr(user.timezone, now);
+  await failStaleEstimates(user.id, now);
   const [meals, water, streak] = await Promise.all([
     db.mealLog.findMany({ where: { userId: user.id, day: dateStrToDb(day) }, orderBy: { eatenAt: "desc" } }),
     db.waterLog.aggregate({ where: { userId: user.id, day: dateStrToDb(day) }, _sum: { ml: true } }),
@@ -65,6 +69,10 @@ export async function getDiary(user: { id: string; timezone: string }, day: Date
     time: formatTz(m.eatenAt, user.timezone, "HH:mm"),
     hasPhoto: !!m.photoKey,
     status: m.status,
+    error:
+      m.status === "FAILED" && m.estimate && typeof m.estimate === "object" && "error" in m.estimate && typeof m.estimate.error === "string"
+        ? m.estimate.error
+        : null,
     kcal: m.kcal,
     proteinG: m.proteinG,
     carbsG: m.carbsG,

@@ -17,7 +17,6 @@ import {
   targetWeightError,
   weightForBmi,
   MIN_BMI,
-  ADULT_AGE,
   type Activity,
   type Goal,
   type Pace,
@@ -216,11 +215,6 @@ export function NutritionOnboarding({ today, antola }: { today: DateStr; antola:
 
         {step === "goal" ? (
           <Question title="Tu objetivo">
-            {age < ADULT_AGE ? (
-              <Notice>
-                Antes de los 18 años no calculamos déficits ni superávits: solo «Mantener» y hábitos sanos. Si quieres cambiar tu peso, háblalo con tu médico o un nutricionista.
-              </Notice>
-            ) : null}
             <div className="space-y-2">
               {options.map((o) => (
                 <BigOption

@@ -27,11 +27,11 @@ class Client {
       redirect: "manual",
       headers: {
         Origin: this.origin,
-        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+        ...(body !== undefined && !(body instanceof FormData) ? { "Content-Type": "application/json" } : {}),
         ...(this.cookie ? { Cookie: this.cookie } : {}),
         ...extraHeaders,
       },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body instanceof FormData ? body : body !== undefined ? JSON.stringify(body) : undefined,
     });
     const setCookie = res.headers.getSetCookie().find((c) => c.startsWith("antola_session="));
     if (setCookie) this.cookie = setCookie.split(";")[0];
@@ -113,6 +113,11 @@ beforeAll(async () => {
   const review = await A.ok("POST", "/api/reviews", { weekStart: "2026-09-14", nextWeekFocus: `Plan ${MARK}`, notes: `Nota ${MARK}` });
   const idea = await A.ok("POST", "/api/ideas", { text: `Idea ${MARK}` });
   const water = await A.ok("POST", "/api/nutrition/water", { ml: 250 });
+  await A.ok("POST", "/api/nutrition/profile", { sex: "FEMALE", age: 30, heightCm: 165, weightKg: 60, activity: "LIGHT", goal: "MAINTAIN", pace: null, targetWeightKg: null });
+  const mealForm = new FormData();
+  mealForm.set("description", `Comida ${MARK}`);
+  for (const [k, v] of Object.entries({ kcal: "500", proteinG: "20", carbsG: "60", fatG: "15" })) mealForm.set(k, v);
+  const meal = await A.ok("POST", "/api/nutrition/meals", mealForm);
   const pushEndpoint = `https://web.push.apple.com/aislamiento-${Date.now()}`;
   await A.ok("POST", "/api/push/subscribe", { endpoint: pushEndpoint, keys: { p256dh: "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM", auth: "tBHItJI5svbpez7KI4CCXg" } });
 
@@ -129,6 +134,7 @@ beforeAll(async () => {
     review: review.id,
     idea: idea.id,
     water: water.id,
+    meal: meal.id,
     // B no es admin: el endpoint de admin debe dar 404 con cualquier id.
     userId: "cuser00000000000000000000",
     pushEndpoint,

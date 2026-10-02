@@ -82,14 +82,11 @@ export function tdee(bmrKcal: number, activity: Activity): number {
 
 export type GoalAvailability = { goal: Goal; allowed: boolean; reason: string | null };
 
-/** Qué objetivos se pueden elegir (menores: solo mantener; IMC bajo: nada de perder). */
+/** Qué objetivos se pueden elegir (con IMC bajo, nada de perder). La edad no limita el objetivo. */
 export function goalOptions(input: { age: number; weightKg: number; heightCm: number }): GoalAvailability[] {
   const all: Goal[] = ["LOSE_FAT", "LOSE_WEIGHT", "MAINTAIN", "RECOMP", "GAIN_MUSCLE", "GAIN_WEIGHT"];
   const currentBmi = bmi(input.weightKg, input.heightCm);
   return all.map((goal) => {
-    if (input.age < ADULT_AGE && goal !== "MAINTAIN") {
-      return { goal, allowed: false, reason: "Antes de los 18 años es mejor no hacer déficits ni superávits sin un profesional." };
-    }
     if (currentBmi < MIN_BMI && (LOSING.includes(goal) || goal === "RECOMP")) {
       return { goal, allowed: false, reason: "Con tu peso actual no es buena idea perder. Mejor háblalo con un profesional." };
     }
@@ -130,7 +127,7 @@ export type PlanInput = {
 };
 
 export type Plan = {
-  goal: Goal; // el que se aplica (un menor siempre "Mantener")
+  goal: Goal; // el que se aplica (con IMC bajo, «Mantener» en vez de perder)
   pace: Pace | null;
   age: number;
   bmi: number;
@@ -156,14 +153,15 @@ const MIN_CARBS_G = 50;
  * Plan diario completo con los límites de seguridad:
  * - las calorías nunca bajan de la TMB;
  * - la pérdida nunca supera el 1 % del peso por semana;
- * - menores de 18: solo mantener.
+ * - con IMC bajo, nada de perder.
+ * La edad solo entra en la fórmula de la TMB (cualquier objetivo desde los 13 años).
  */
 export function computePlan(input: PlanInput): Plan {
   const notes: string[] = [];
   let goal = input.goal;
   if (input.age < ADULT_AGE && goal !== "MAINTAIN") {
-    goal = "MAINTAIN";
-    notes.push("Antes de los 18 años no calculamos déficits ni superávits. Si quieres cambiar tu peso, háblalo con tu médico o un nutricionista.");
+    // Aviso suave, no bloquea.
+    notes.push("Como estás creciendo, si vas a cambiar de peso es buena idea comentarlo con tu médico.");
   }
   const currentBmi = bmi(input.weightKg, input.heightCm);
   if (currentBmi < MIN_BMI && (LOSING.includes(goal) || goal === "RECOMP")) {
