@@ -58,6 +58,7 @@ model User {
   waterLogs         WaterLog[]
   weightLogs        WeightLog[]
   aiUsage           AiUsage[]
+  profityLink ProfityLink?
 }
 
 model Session {
@@ -771,4 +772,15 @@ model AiUsage {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, day])
+}
+
+/// Conexión con Profity (la web de stock): cada usuario pega su propia clave.
+model ProfityLink {
+  userId      String    @id
+  token       String // clave que da Profity; solo la usa el servidor, nunca se devuelve al navegador
+  connectedAt DateTime  @default(now())
+  syncedAt    DateTime? // última sincronización correcta
+  error       String? // último error (clave revocada, Profity caído…)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

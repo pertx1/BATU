@@ -2,10 +2,13 @@ import type { Metadata } from "next";
 import { requireOnboardedUser } from "@/lib/auth/session";
 import { minutesToHHMM } from "@/lib/dates";
 import { getSettings } from "@/lib/data/settings";
+import { db } from "@/lib/db";
+import { profityUrl } from "@/lib/integrations/profity";
 import { vapidPublicKey } from "@/lib/push";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { AppearancePanel } from "@/components/settings/appearance-panel";
 import { NotificationsPanel } from "@/components/settings/notifications-panel";
+import { ProfityPanel } from "@/components/settings/profity-panel";
 import { SettingsForm } from "@/components/settings/settings-form";
 
 export const metadata: Metadata = { title: "Ajustes" };
@@ -20,7 +23,11 @@ function timezones(): string[] {
 
 export default async function AjustesPage() {
   const user = await requireOnboardedUser();
-  const s = await getSettings(user.id);
+  const [s, profity] = await Promise.all([
+    getSettings(user.id),
+    // Nunca se lee la clave: solo si está conectado y cómo fue la última revisión.
+    profityUrl() ? db.profityLink.findUnique({ where: { userId: user.id }, select: { syncedAt: true, error: true } }) : null,
+  ]);
 
   return (
     <>
@@ -33,6 +40,14 @@ export default async function AjustesPage() {
           {/* La clave pública se lee en tiempo de ejecución: no hace falta recompilar al añadirla. */}
           <NotificationsPanel publicKey={vapidPublicKey()} />
         </section>
+        {profityUrl() ? (
+          <section id="profity" className="mb-7 scroll-mt-24">
+            <h2 className="mb-2 px-1 text-sm font-semibold uppercase tracking-wide text-muted">Profity</h2>
+            <ProfityPanel
+              state={{ connected: !!profity, syncedAt: profity?.syncedAt?.toISOString() ?? null, error: profity?.error ?? null, timezone: s.timezone }}
+            />
+          </section>
+        ) : null}
         <section id="apariencia" className="mb-7 scroll-mt-24">
           <h2 className="mb-2 px-1 text-sm font-semibold uppercase tracking-wide text-muted">Apariencia</h2>
           <AppearancePanel />

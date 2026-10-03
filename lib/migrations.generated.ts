@@ -24,5 +24,10 @@ export const MIGRATIONS: { name: string; checksum: string; sql: string }[] = [
     "name": "20261003100000_task_external_key",
     "checksum": "9bb6f72ea877a60fec47a935e7b8c2b85549e3769580e2282270082b42838524",
     "sql": "-- AlterTable\nALTER TABLE \"Task\" ADD COLUMN \"externalKey\" TEXT;\n\n-- CreateIndex\nCREATE UNIQUE INDEX \"Task_userId_externalKey_key\" ON \"Task\"(\"userId\", \"externalKey\");\n"
+  },
+  {
+    "name": "20261003130000_profity_link",
+    "checksum": "b85b7279766f6f786701bce7e0ee2619c8698ae83cced4ecfda081c0b0d12839",
+    "sql": "-- CreateTable\nCREATE TABLE \"ProfityLink\" (\n    \"userId\" TEXT NOT NULL,\n    \"token\" TEXT NOT NULL,\n    \"connectedAt\" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,\n    \"syncedAt\" TIMESTAMP(3),\n    \"error\" TEXT,\n\n    CONSTRAINT \"ProfityLink_pkey\" PRIMARY KEY (\"userId\")\n);\n\n-- AddForeignKey\nALTER TABLE \"ProfityLink\" ADD CONSTRAINT \"ProfityLink_userId_fkey\" FOREIGN KEY (\"userId\") REFERENCES \"User\"(\"id\") ON DELETE CASCADE ON UPDATE CASCADE;\n"
   }
 ];
