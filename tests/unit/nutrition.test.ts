@@ -455,3 +455,21 @@ describe("ración de un alimento", () => {
     expect(scaledQuantity("", 2)).toBe("×2");
   });
 });
+
+describe("integración con Profity", () => {
+  it("lee los artículos y descarta lo que no encaja", async () => {
+    const { parseProfityItems } = await import("@/lib/integrations/profity-items");
+    expect(
+      parseProfityItems({ items: [{ key: "tshirt-BLANCA-M", label: "Camiseta blanca · talla M", quantity: 0 }, { key: 3 }, null, { key: "x", label: "y", quantity: -2.4 }] }),
+    ).toEqual([
+      { key: "tshirt-BLANCA-M", label: "Camiseta blanca · talla M", quantity: 0 },
+      { key: "x", label: "y", quantity: -2 },
+    ]);
+    expect(() => parseProfityItems({ nada: true })).toThrow();
+  });
+  it("la nota dice cuánto falta", async () => {
+    const { profityNotes } = await import("@/lib/integrations/profity-items");
+    expect(profityNotes(0)).toMatch(/^Se ha quedado a 0\./);
+    expect(profityNotes(-3)).toMatch(/^Faltan 3 para cubrir los pedidos pendientes\./);
+  });
+});

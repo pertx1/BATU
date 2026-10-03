@@ -10,6 +10,7 @@ import { nextHabitReminderAt } from "@/lib/schedule";
 import { vapidConfig } from "@/lib/push";
 import { deliver } from "@/lib/notifications/deliver";
 import { runNutritionTick, type NutritionTickReport } from "@/lib/notifications/nutrition-tick";
+import { syncProfityStock } from "@/lib/integrations/profity";
 import {
   antolaEvening,
   antolaMissYou,
@@ -611,6 +612,10 @@ async function housekeeping(now: Date) {
     db.session.deleteMany({ where: { expiresAt: { lt: now } } }),
     db.passwordResetToken.deleteMany({ where: { OR: [{ expiresAt: { lt: now } }, { usedAt: { not: null } }] } }),
     rollAllRecurringTasks(now),
+    // Profity: una tarea por artículo que haya que pedir (si está configurado).
+    syncProfityStock(now).then((r) => {
+      if (r && "error" in r) console.error("[antola] Profity:", r.error);
+    }),
     db.antolaMessageLog.deleteMany({ where: { shownAt: { lt: ago(LOG_RETENTION_DAYS) } } }),
     // Antola: cierre del día (rachas y protectores) y retos de la semana, por zona horaria.
     closeAllDays(now).then(() => ensureAllWeekChallenges(now)),

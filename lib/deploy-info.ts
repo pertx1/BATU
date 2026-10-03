@@ -21,11 +21,15 @@ export function notificationEnvStatus() {
       R2_ACCESS_KEY_ID: has("R2_ACCESS_KEY_ID"),
       R2_SECRET_ACCESS_KEY: has("R2_SECRET_ACCESS_KEY"),
       R2_BUCKET: has("R2_BUCKET"),
+      // Profity: tareas de stock.
+      PROFITY_URL: has("PROFITY_URL"),
+      PROFITY_TOKEN: has("PROFITY_TOKEN"),
+      PROFITY_USER_EMAIL: has("PROFITY_USER_EMAIL"),
     },
     // Variables con nombre parecido (p. ej. con un espacio o en minúsculas): solo el nombre.
     nombresParecidos: Object.keys(process.env).filter(
       (k) =>
-        /cron|vapid|anthropic|r2_/i.test(k) &&
+        /cron|vapid|anthropic|r2_|profity/i.test(k) &&
         ![
           "CRON_SECRET",
           "NEXT_PUBLIC_VAPID_PUBLIC_KEY",
@@ -39,6 +43,9 @@ export function notificationEnvStatus() {
           "R2_SECRET_ACCESS_KEY",
           "R2_BUCKET",
           "R2_ENDPOINT",
+          "PROFITY_URL",
+          "PROFITY_TOKEN",
+          "PROFITY_USER_EMAIL",
         ].includes(k),
     ),
   };

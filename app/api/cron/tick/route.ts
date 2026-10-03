@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { describeServerError } from "@/lib/api";
 import { ensureMigrated } from "@/lib/migrate";
 import { runTick } from "@/lib/notifications/tick";
+import { syncProfityStock } from "@/lib/integrations/profity";
 import { notificationEnvStatus } from "@/lib/deploy-info";
 
 export const dynamic = "force-dynamic";
@@ -45,6 +46,10 @@ export async function GET(req: NextRequest) {
   try {
     await ensureMigrated();
     const report = await runTick();
+    // ?profity=1: sincroniza ya el stock de Profity (normalmente va cada hora).
+    if (req.nextUrl.searchParams.get("profity") === "1") {
+      return NextResponse.json({ ...report, profity: await syncProfityStock() }, { headers: { "Cache-Control": "no-store" } });
+    }
     if (!report.clavesVapid) {
       console.warn("[antola] cron: faltan las claves VAPID; no se envían avisos.");
     }

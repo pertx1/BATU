@@ -51,6 +51,7 @@ interfaz está en español.
 14. [Desarrollo local](#14-desarrollo-local)
 15. [Cómo funciona por dentro](#15-cómo-funciona-por-dentro)
 16. [Solución de problemas](#16-solución-de-problemas)
+17. [Conectar con Profity (tareas de stock)](#17-conectar-con-profity-tareas-de-stock)
 
 ---
 
@@ -84,6 +85,9 @@ marca **Production, Preview y Development** y vuelve a desplegar después de cam
 | `RESEND_API_KEY` | Para emails | API key de Resend ([§8](#8-emails-con-resend)). **Secreta.** | `re_…` |
 | `EMAIL_FROM` | Para emails | Remitente, con un dominio verificado en Resend. | `Antola <no-reply@tudominio.com>` |
 | `ANTHROPIC_API_KEY` | Para la IA | Estimación de calorías y macros de las comidas ([§9](#9-comida-estimación-con-ia-anthropic)). **Secreta.** | `sk-ant-…` |
+| `PROFITY_URL` | Para Profity | URL de tu Profity, sin barra final ([§17](#17-conectar-con-profity-tareas-de-stock)). | `https://profity-tuusuario.vercel.app` |
+| `PROFITY_TOKEN` | Para Profity | Clave compartida con Profity (la misma que su `ANTOLA_TOKEN`). **Secreta.** | `7c1…` (48 caracteres) |
+| `PROFITY_USER_EMAIL` | Para Profity | Cuenta de Antola donde aparecen las tareas de stock. | `tu@email.com` |
 | `ANTHROPIC_MODEL` | No | Modelo para estimar. Por defecto `claude-haiku-4-5-20251001`. | `claude-haiku-4-5-20251001` |
 
 Sin las variables de avisos la app funciona igual, pero no envía notificaciones; sin las de
@@ -408,3 +412,22 @@ has pesado.
 | «Demasiados intentos» | Bloqueo por fallos de login | Espera 15 minutos o recupera la contraseña |
 | «La estimación con IA no está configurada» | Falta `ANTHROPIC_API_KEY` | [§9](#9-comida-estimación-con-ia-anthropic) |
 | Las comidas quedan «sin estimar» con un aviso | Clave sin saldo, límite de gasto o modelo no disponible | Revisa Billing y Limits en la consola de Anthropic |
+
+## 17. Conectar con Profity (tareas de stock)
+
+Cada hora Antola pregunta a Profity qué hay que pedir (lo mismo que su lista «Hay que pedir»:
+stock a 0 o menos, restando los pedidos pendientes) y crea **una tarea por artículo**, para
+hoy, con prioridad alta y aviso en el móvil: «Pedir Camiseta blanca · talla M».
+
+1. Genera una clave: `node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"`.
+2. En el proyecto de **Profity** en Vercel: `ANTOLA_TOKEN` = esa clave y
+   `ANTOLA_PROFITY_EMAIL` = tu email de Profity. Redespliega.
+3. En el proyecto de **Antola** en Vercel: `PROFITY_URL` = la URL de Profity,
+   `PROFITY_TOKEN` = la misma clave y `PROFITY_USER_EMAIL` = tu email de Antola. Redespliega.
+4. Para no esperar a la siguiente hora: abre
+   `https://TU-APP.vercel.app/api/cron/tick?key=TU_CRON_SECRET&profity=1` y mira `"profity"`
+   en la respuesta (`creadas`, `faltan` o el `error`).
+
+- No repite tareas. Si tachas una y el artículo sigue a 0, no vuelve a salir; cuando Profity
+  ya tiene stock, la tarea pendiente se completa sola y, si vuelve a faltar, sale otra.
+- Si borras una tarea (en vez de tacharla) y sigue faltando, vuelve a aparecer a la hora.

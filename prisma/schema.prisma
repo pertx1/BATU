@@ -207,6 +207,7 @@ model Task {
   recurrenceDays Int[] // 0=domingo … 6=sábado
   seriesId       String? // agrupa las ocurrencias de una serie
   spawnedFromId  String?    @unique // ocurrencia que la generó (evita duplicados, permite deshacer)
+  externalKey    String? // creada por una integración (p. ej. «profity:tshirt-BLANCA-M»): evita duplicados
 
   completedAt DateTime?
   position    Int       @default(0)
@@ -218,6 +219,7 @@ model Task {
   goal     Goal?     @relation(fields: [goalId], references: [id], onDelete: SetNull)
   subtasks Subtask[]
 
+  @@unique([userId, externalKey])
   @@index([userId, completedAt, dueDate])
   @@index([userId, projectId])
   @@index([userId, goalId])
