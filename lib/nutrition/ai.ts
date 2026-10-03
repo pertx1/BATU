@@ -68,12 +68,12 @@ export async function estimateMeal(input: EstimateInput): Promise<Estimate> {
       messages: [{ role: "user", content }],
       output_config: { format: zodOutputFormat(aiEstimateSchema) },
     });
-    if (response.stop_reason === "refusal") throw new EstimateError("No he podido estimar esta comida. Prueba a describirla con texto.");
+    if (response.stop_reason === "refusal") throw new EstimateError("No he podido estimar esta comida. Prueba a describirla de otra forma.");
     if (response.stop_reason === "max_tokens" || !response.parsed_output) {
       throw new EstimateError("La estimación ha salido incompleta. Inténtalo otra vez.");
     }
     const estimate = normalizeEstimate(response.parsed_output);
-    if (!estimate.foods.length) throw new EstimateError("No he reconocido comida en la foto. Prueba a añadir una descripción.");
+    if (!estimate.foods.length) throw new EstimateError("No he reconocido ninguna comida en la descripción. Prueba a explicarla con más detalle.");
     return estimate;
   } catch (err) {
     if (err instanceof EstimateError) throw err;
@@ -84,7 +84,7 @@ export async function estimateMeal(input: EstimateInput): Promise<Estimate> {
     }
     if (err instanceof Anthropic.BadRequestError) {
       console.error("[antola] IA: petición rechazada:", err.message);
-      throw new EstimateError("No he podido analizar esta foto. Prueba con otra o describe la comida.");
+      throw new EstimateError("No he podido analizar esta comida. Prueba a describirla de otra forma.");
     }
     if (err instanceof Anthropic.APIError) {
       console.error(`[antola] IA: error ${err.status}:`, err.message);

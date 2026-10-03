@@ -51,7 +51,7 @@ export async function createMeal(
   const today = todayStr(user.timezone, now);
   if (input.day > today) throw new HttpError(400, "No se puede registrar una comida en un día futuro");
   if (input.day < addDays(today, -365)) throw new HttpError(400, "Esa fecha es demasiado antigua");
-  if (!input.photo && !input.description) throw new HttpError(400, "Haz una foto o describe lo que has comido");
+  if (!input.photo && !input.description) throw new HttpError(400, "Describe lo que has comido");
   if (input.photo && !photosConfigured()) {
     throw new HttpError(503, "Las fotos aún no están configuradas en el servidor. De momento, describe la comida con texto.");
   }
