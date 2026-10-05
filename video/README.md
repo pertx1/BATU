@@ -3,6 +3,10 @@
 Reels verticales 1080×1920 a 30 fps. Cada tarjeta dura 4-5 s y el reel las
 encadena con un corte rápido (destello del color de acento + desenfoque).
 
+El reel de ejemplo usa el fragmento **1:36.8–2:29** del podcast con Luisito
+Comunica (lo difícil que es pagar en China): lleva el audio original,
+subtítulos sincronizados y 11 tarjetas que cambian con lo que se va diciendo.
+
 ## Uso
 
 ```bash
@@ -24,14 +28,26 @@ Todo está en **`src/scenes.ts`**: textos, color de acento (`ACCENTS.azul`,
 También se puede editar todo desde el panel de props del Studio (schemas zod en
 `src/schema.ts`).
 
+### Audio y subtítulos
+
+- `reelDefaults.audio` (en `scenes.ts`): archivo de `public/`, segundo del audio
+  original en el que empieza el reel (`startSeconds`) y volumen. El reel dura
+  lo que sumen las tarjetas (menos 6 frames por transición), así que para
+  cambiar de fragmento ajusta `startSeconds` y las duraciones.
+- `src/data/captions.ts`: frases con `start`/`end` en segundos desde el inicio
+  del reel. La palabra que se está diciendo se resalta con el acento de la
+  tarjeta visible. `showCaptions: false` los oculta.
+- `objectSrc: "icon:<nombre>"` usa un objeto SVG integrado: `telefono`,
+  `tarjeta`, `billetes`, `edificio`, `wifi`, `qr`, `mango`, `cajero`.
+
 ## Assets (`public/`)
 
 | Archivo | Uso | Estado |
 | --- | --- | --- |
-| `persona.png` | Plantilla B: persona recortada (PNG con alfa) | Incluido (fotograma del vídeo del podcast) |
+| `persona.png`, `persona-cash.png`, `persona-apestoso.png` | Plantilla B: persona recortada (PNG con alfa) | Incluidos (fotogramas del podcast, 4:36, 2:14 y 2:25) |
+| `podcast-audio.m4a` | Audio completo del podcast | Incluido |
 | `sombra-ventana.jpg` | Sombra de persiana y hojas en B/N | Incluido (generado) |
-| `objeto.png` | Plantilla A: objeto recortado (PNG con alfa o `.webm` con alfa) | **Falta** → placeholder SVG |
-| `objeto-pequeno.png` | Plantilla C: objeto pequeño que entra girando | **Falta** → placeholder SVG |
+| objetos (`objectSrc`) | Plantillas A y C | El ejemplo usa objetos SVG `icon:`; puedes poner un PNG/WebM con alfa |
 
 Si un archivo no existe se dibuja un placeholder SVG y en la consola del render
 aparece `[reel] Faltan estos archivos en public/ ...`. Los objetos funcionan

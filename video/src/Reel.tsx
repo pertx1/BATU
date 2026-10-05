@@ -1,13 +1,83 @@
+import { Audio } from "@remotion/media";
 import { linearTiming, TransitionSeries } from "@remotion/transitions";
-import type { CalculateMetadataFunction } from "remotion";
+import {
+  AbsoluteFill,
+  interpolate,
+  useCurrentFrame,
+  useVideoConfig,
+  type CalculateMetadataFunction,
+} from "remotion";
 import { CardView } from "./CardView";
+import { Captions } from "./components/Captions";
 import { cardTransition } from "./components/CardTransition";
-import { missingAssets } from "./lib/assets";
-import type { Card, ReelProps } from "./schema";
-import { TRANSITION_FRAMES } from "./theme";
+import { missingAssets, resolveAsset } from "./lib/assets";
+import type { AudioTrack, Card, ReelProps } from "./schema";
+import { FPS, TRANSITION_FRAMES } from "./theme";
 
-/** Encadena las tarjetas con cortes rápidos (destello del acento + desenfoque). */
-export const Reel: React.FC<ReelProps> = ({ cards, fx }) => {
+/** Frame en el que empieza cada tarjeta dentro del reel (con solapes). */
+export const cardStarts = (cards: Card[]) => {
+  let at = 0;
+  return cards.map((c) => {
+    const start = at;
+    at += c.durationInFrames - TRANSITION_FRAMES;
+    return start;
+  });
+};
+
+/**
+ * Encadena las tarjetas con cortes rápidos (destello del acento + desenfoque),
+ * con el audio del fragmento y subtítulos sincronizados por encima.
+ */
+export const Reel: React.FC<ReelProps> = ({
+  cards,
+  fx,
+  audio,
+  showCaptions,
+  captions,
+}) => {
+  const starts = cardStarts(cards);
+  // Acento de la tarjeta visible en cada instante (para resaltar subtítulos).
+  const accentAt = (seconds: number) => {
+    const f = seconds * FPS;
+    let i = 0;
+    while (i + 1 < cards.length && starts[i + 1] + TRANSITION_FRAMES / 2 <= f) {
+      i++;
+    }
+    return cards[i].accent;
+  };
+  return (
+    <AbsoluteFill>
+      <Cards cards={cards} fx={fx} />
+      {showCaptions ? <Captions captions={captions} accentAt={accentAt} /> : null}
+      <ReelAudio audio={audio} />
+    </AbsoluteFill>
+  );
+};
+
+/** Audio del fragmento con fundido de entrada y salida muy corto. */
+const ReelAudio: React.FC<{ audio: AudioTrack }> = ({ audio }) => {
+  const frame = useCurrentFrame();
+  const { durationInFrames, fps } = useVideoConfig();
+  const url = resolveAsset(audio.src);
+  if (!url) {
+    return null;
+  }
+  const fade = interpolate(
+    frame,
+    [0, 6, durationInFrames - 12, durationInFrames],
+    [0, 1, 1, 0],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+  );
+  return (
+    <Audio
+      src={url}
+      trimBefore={Math.round(audio.startSeconds * fps)}
+      volume={audio.volume * fade}
+    />
+  );
+};
+
+const Cards: React.FC<Pick<ReelProps, "cards" | "fx">> = ({ cards, fx }) => {
   return (
     <TransitionSeries>
       {cards.flatMap((card, i) => {
@@ -47,8 +117,8 @@ const assetsOf = (card: Card): string[] => {
   }
 };
 
-export const warnMissing = (cards: Card[]) => {
-  const missing = missingAssets(cards.flatMap(assetsOf));
+export const warnMissing = (cards: Card[], extra: string[] = []) => {
+  const missing = missingAssets([...cards.flatMap(assetsOf), ...extra]);
   if (missing.length > 0) {
     console.warn(
       `[reel] Faltan estos archivos en public/ (se usa un placeholder SVG): ${missing.join(", ")}`,
@@ -60,7 +130,7 @@ export const warnMissing = (cards: Card[]) => {
 export const calculateReelMetadata: CalculateMetadataFunction<ReelProps> = ({
   props,
 }) => {
-  warnMissing(props.cards);
+  warnMissing(props.cards, [props.audio.src]);
   const total = props.cards.reduce((sum, c) => sum + c.durationInFrames, 0);
   return {
     durationInFrames: total - TRANSITION_FRAMES * (props.cards.length - 1),

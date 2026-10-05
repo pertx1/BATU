@@ -16,7 +16,7 @@ import type { Fx, TextCard } from "../schema";
 import { FONTS, GRAYS, INK, SOFT_SPRING, WIDTH } from "../theme";
 
 const WORD_Y = 960;
-const OBJECT = 300;
+const OBJECT = 250;
 
 /**
  * Plantilla C: el texto es el protagonista. Línea pequeña, palabra gigante
@@ -43,6 +43,10 @@ export const TextCentered: React.FC<{ card: TextCard; fx: Fx }> = ({ card, fx })
   const objY = interpolate(enter, [0, 1], [1250, 0]);
   const objRot = interpolate(enter, [0, 1], [-260, -18]) + Math.sin(frame / 30) * 5;
   const objFloat = Math.sin(frame / 22) * 10;
+  // Se queda en la esquina superior derecha de la palabra: la cruza sin tapar
+  // las letras del centro.
+  const wordWidth = Array.from(card.bigWord).length * giant * 0.47;
+  const objX = Math.min(WIDTH / 2 + wordWidth / 2 - 10, WIDTH - OBJECT / 2 - 30);
 
   return (
     <CardShell card={card} fx={fx}>
@@ -118,8 +122,8 @@ export const TextCentered: React.FC<{ card: TextCard; fx: Fx }> = ({ card, fx })
       <div
         style={{
           position: "absolute",
-          left: WIDTH * 0.7 - OBJECT / 2,
-          top: WORD_Y - OBJECT / 2 + 40,
+          left: objX - OBJECT / 2,
+          top: WORD_Y - giant * 0.42 - OBJECT / 2,
           transform: `translateY(${objY + objFloat}px) rotate(${objRot}deg)`,
         }}
       >

@@ -1,6 +1,7 @@
 import { Video } from "@remotion/media";
 import { Img } from "remotion";
 import { isVideo, resolveAsset } from "../lib/assets";
+import { ICONS, iconName } from "./Icons";
 import { PlaceholderObject } from "./Placeholders";
 
 type Props = {
@@ -10,11 +11,14 @@ type Props = {
 };
 
 /**
- * Objeto recortado: PNG con alfa o WebM con alfa (en bucle). Si el archivo no
- * está en public/, dibuja un placeholder SVG.
+ * Objeto recortado: PNG con alfa, WebM con alfa (en bucle) o un objeto SVG
+ * integrado ("icon:telefono"…). Si el archivo no está en public/, dibuja un
+ * placeholder SVG.
  */
 export const MediaObject: React.FC<Props> = ({ src, size, style }) => {
-  const url = resolveAsset(src);
+  const icon = iconName(src);
+  const Icon = icon ? ICONS[icon] : undefined;
+  const url = icon ? null : resolveAsset(src);
   const box: React.CSSProperties = {
     width: size,
     height: size,
@@ -22,6 +26,13 @@ export const MediaObject: React.FC<Props> = ({ src, size, style }) => {
     display: "block",
     ...style,
   };
+  if (Icon) {
+    return (
+      <div style={box}>
+        <Icon size={size} />
+      </div>
+    );
+  }
   if (!url) {
     return (
       <div style={box}>

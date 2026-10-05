@@ -12,7 +12,7 @@ import { at } from "../lib/timing";
 import type { Fx, ObjectCard } from "../schema";
 import { FONTS, GRAYS, INK } from "../theme";
 
-const CENTER_Y = 930;
+const CENTER_Y = 870;
 const CIRCLE = 560;
 const RING = 720;
 const OBJECT = 560;
@@ -75,7 +75,7 @@ export const ObjectCentered: React.FC<{ card: ObjectCard; fx: Fx }> = ({
       </AbsoluteFill>
 
       {/* 6. Texto */}
-      <AbsoluteFill style={{ alignItems: "center", top: 250 }}>
+      <AbsoluteFill style={{ alignItems: "center", top: 215 }}>
         <Typewriter
           text={card.title}
           delay={at("title", s)}
@@ -108,7 +108,7 @@ export const ObjectCentered: React.FC<{ card: ObjectCard; fx: Fx }> = ({
         </WipeBar>
       </AbsoluteFill>
 
-      <AbsoluteFill style={{ alignItems: "center", top: 1320 }}>
+      <AbsoluteFill style={{ alignItems: "center", top: 1250 }}>
         <Typewriter
           text={card.keyword}
           delay={at("keyword", s)}

@@ -1,7 +1,7 @@
 import "./index.css";
 import { Composition, Folder, type CalculateMetadataFunction } from "remotion";
 import { calculateReelMetadata, Reel, warnMissing } from "./Reel";
-import { characterCard, defaultFx, objectCard, scenes, textCard } from "./scenes";
+import { characterCard, defaultFx, objectCard, reelDefaults, textCard } from "./scenes";
 import {
   characterCompSchema,
   objectCompSchema,
@@ -33,7 +33,7 @@ export const RemotionRoot: React.FC = () => {
         id="Reel"
         component={Reel}
         schema={reelSchema}
-        defaultProps={{ cards: scenes, fx: defaultFx }}
+        defaultProps={reelDefaults}
         calculateMetadata={calculateReelMetadata}
         durationInFrames={390}
         fps={FPS}

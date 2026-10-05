@@ -66,9 +66,27 @@ export const fxSchema = z.object({
   chromaticAberration: z.boolean(),
 });
 
+export const captionSchema = z.object({
+  /** Segundos desde el inicio del reel. */
+  start: z.number().min(0),
+  end: z.number().min(0),
+  text: z.string(),
+});
+
+export const audioSchema = z.object({
+  /** Audio en public/ ("" = sin audio). */
+  src: z.string(),
+  /** Segundo del audio original en el que empieza el reel. */
+  startSeconds: z.number().min(0),
+  volume: z.number().min(0).max(2).step(0.05),
+});
+
 export const reelSchema = z.object({
   cards: z.array(cardSchema).min(1),
   fx: fxSchema,
+  audio: audioSchema,
+  showCaptions: z.boolean(),
+  captions: z.array(captionSchema),
 });
 
 export const objectCompSchema = z.object({ card: objectCardSchema, fx: fxSchema });
@@ -84,3 +102,5 @@ export type TextCard = z.infer<typeof textCardSchema>;
 export type Card = z.infer<typeof cardSchema>;
 export type Fx = z.infer<typeof fxSchema>;
 export type ReelProps = z.infer<typeof reelSchema>;
+export type Caption = z.infer<typeof captionSchema>;
+export type AudioTrack = z.infer<typeof audioSchema>;

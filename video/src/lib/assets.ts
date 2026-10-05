@@ -23,4 +23,8 @@ export const isVideo = (src: string) => /\.(webm|mov|mp4)$/i.test(src);
 
 /** Lista de assets referenciados que no están en public/. */
 export const missingAssets = (srcs: string[]): string[] =>
-  Array.from(new Set(srcs.filter((s) => s.trim() && resolveAsset(s) === null)));
+  Array.from(
+    new Set(
+      srcs.filter((s) => s.trim() && !s.startsWith("icon:") && resolveAsset(s) === null),
+    ),
+  );
