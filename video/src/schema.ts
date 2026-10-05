@@ -67,7 +67,7 @@ export const fxSchema = z.object({
 });
 
 export const captionSchema = z.object({
-  /** Segundos desde el inicio del reel. */
+  /** Segundos del audio original. */
   start: z.number().min(0),
   end: z.number().min(0),
   text: z.string(),

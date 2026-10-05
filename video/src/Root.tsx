@@ -1,7 +1,7 @@
 import "./index.css";
 import { Composition, Folder, type CalculateMetadataFunction } from "remotion";
 import { calculateReelMetadata, Reel, warnMissing } from "./Reel";
-import { characterCard, defaultFx, objectCard, reelDefaults, textCard } from "./scenes";
+import { characterCard, clips, defaultFx, objectCard, textCard } from "./scenes";
 import {
   characterCompSchema,
   objectCompSchema,
@@ -29,17 +29,22 @@ const cardMetadata =
 export const RemotionRoot: React.FC = () => {
   return (
     <>
-      <Composition
-        id="Reel"
-        component={Reel}
-        schema={reelSchema}
-        defaultProps={reelDefaults}
-        calculateMetadata={calculateReelMetadata}
-        durationInFrames={390}
-        fps={FPS}
-        width={WIDTH}
-        height={HEIGHT}
-      />
+      <Folder name="Clips">
+        {clips.map((clip) => (
+          <Composition
+            key={clip.id}
+            id={clip.id}
+            component={Reel}
+            schema={reelSchema}
+            defaultProps={clip.props}
+            calculateMetadata={calculateReelMetadata}
+            durationInFrames={510}
+            fps={FPS}
+            width={WIDTH}
+            height={HEIGHT}
+          />
+        ))}
+      </Folder>
       <Folder name="Plantillas">
         <Composition
           id="ObjectCentered"

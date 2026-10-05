@@ -48,7 +48,7 @@ export const Reel: React.FC<ReelProps> = ({
   return (
     <AbsoluteFill>
       <Cards cards={cards} fx={fx} />
-      {showCaptions ? <Captions captions={captions} accentAt={accentAt} /> : null}
+      {showCaptions ? <Captions captions={captions} offsetSeconds={audio.startSeconds} accentAt={accentAt} /> : null}
       <ReelAudio audio={audio} />
     </AbsoluteFill>
   );

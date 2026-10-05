@@ -35,7 +35,7 @@
     "build": "remotion bundle",
     "upgrade": "remotion upgrade",
     "lint": "eslint src && tsc",
-    "render": "remotion render Reel out/reel.mp4"
+    "render": "remotion render Clip1-NoSeAdapta out/Clip1-NoSeAdapta.mp4"
   },
   "sideEffects": [
     "*.css"

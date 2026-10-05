@@ -10,6 +10,8 @@ import { FONTS, INK } from "../theme";
 
 type Props = {
   captions: Caption[];
+  /** Segundo del audio original que corresponde al frame 0. */
+  offsetSeconds: number;
   /** Color de resaltado de la palabra actual en cada instante (segundos). */
   accentAt: (seconds: number) => string;
 };
@@ -19,10 +21,10 @@ type Props = {
  * la palabra que se está diciendo se resalta en el color de acento. Los tiempos
  * por palabra se reparten según la longitud de cada palabra dentro de la frase.
  */
-export const Captions: React.FC<Props> = ({ captions, accentAt }) => {
+export const Captions: React.FC<Props> = ({ captions, offsetSeconds, accentAt }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const t = frame / fps;
+  const t = frame / fps + offsetSeconds;
   const current = captions.find((c) => t >= c.start && t < c.end);
   if (!current) {
     return null;
@@ -39,13 +41,13 @@ export const Captions: React.FC<Props> = ({ captions, accentAt }) => {
     return [from, acc] as const;
   });
 
-  const local = frame - current.start * fps;
+  const local = frame - (current.start - offsetSeconds) * fps;
   const appear = interpolate(local, [0, 5], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
     easing: Easing.out(Easing.cubic),
   });
-  const accent = accentAt(t);
+  const accent = accentAt(t - offsetSeconds);
 
   return (
     <AbsoluteFill style={{ justifyContent: "flex-end", alignItems: "center", paddingBottom: 170 }}>
