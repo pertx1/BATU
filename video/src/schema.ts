@@ -74,9 +74,9 @@ export const captionSchema = z.object({
 });
 
 export const audioSchema = z.object({
-  /** Audio en public/ ("" = sin audio). */
+  /** Audio del clip en public/, ya cortado a su tramo ("" = sin audio). */
   src: z.string(),
-  /** Segundo del audio original en el que empieza el reel. */
+  /** Segundo del podcast en el que empieza ese archivo (sincroniza subtítulos). */
   startSeconds: z.number().min(0),
   volume: z.number().min(0).max(2).step(0.05),
 });

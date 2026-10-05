@@ -36,10 +36,15 @@ También se puede editar todo desde el panel de props del Studio (schemas zod en
 
 ### Audio y subtítulos
 
-- `clipProps(tarjetas, startSeconds)` (en `scenes.ts`): segundo del audio
-  original en el que empieza el clip. El clip dura lo que sumen sus tarjetas
-  (menos 6 frames por transición), así que para cambiar de tramo ajusta
-  `startSeconds` y las duraciones.
+- Cada clip tiene su propio audio en `public/audio/`, ya cortado a su tramo:
+  `clipProps(tarjetas, "audio/clip1-no-se-adapta.m4a", 96.8)`. El último número
+  es el segundo del podcast donde empieza ese audio (sirve para sincronizar los
+  subtítulos). El clip dura lo que sumen sus tarjetas (menos 6 frames por
+  transición). Para sacar otro tramo del vídeo:
+
+  ```bash
+  ffmpeg -ss 96.8 -t 16.2 -i podcast.mp4 -vn -c:a aac -b:a 160k public/audio/mi-clip.m4a
+  ```
 - `src/data/captions.ts`: frases con `start`/`end` en segundos del audio
   original; cada clip muestra solo las de su tramo. La palabra que se está diciendo se resalta con el acento de la
   tarjeta visible. `showCaptions: false` los oculta.
@@ -51,7 +56,7 @@ También se puede editar todo desde el panel de props del Studio (schemas zod en
 | Archivo | Uso | Estado |
 | --- | --- | --- |
 | `persona.png`, `persona-cash.png`, `persona-apestoso.png` | Plantilla B: persona recortada (PNG con alfa) | Incluidos (fotogramas del podcast, 4:36, 2:14 y 2:25) |
-| `podcast-audio.m4a` | Audio completo del podcast | Incluido |
+| `audio/clip*.m4a` | Audio de cada clip (cortado del podcast) | Incluidos |
 | `sombra-ventana.jpg` | Sombra de persiana y hojas en B/N | Incluido (generado) |
 | objetos (`objectSrc`) | Plantillas A y C | El ejemplo usa objetos SVG `icon:`; puedes poner un PNG/WebM con alfa |
 

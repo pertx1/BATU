@@ -54,10 +54,13 @@ export const Reel: React.FC<ReelProps> = ({
   );
 };
 
-/** Audio del fragmento con fundido de entrada y salida muy corto. */
+/**
+ * Audio del clip (un archivo ya cortado a su tramo, que suena desde el
+ * segundo 0) con fundido de entrada y salida muy corto.
+ */
 const ReelAudio: React.FC<{ audio: AudioTrack }> = ({ audio }) => {
   const frame = useCurrentFrame();
-  const { durationInFrames, fps } = useVideoConfig();
+  const { durationInFrames } = useVideoConfig();
   const url = resolveAsset(audio.src);
   if (!url) {
     return null;
@@ -69,11 +72,7 @@ const ReelAudio: React.FC<{ audio: AudioTrack }> = ({ audio }) => {
     { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
   );
   return (
-    <Audio
-      src={url}
-      trimBefore={Math.round(audio.startSeconds * fps)}
-      volume={audio.volume * fade}
-    />
+    <Audio src={url} volume={audio.volume * fade} />
   );
 };
 

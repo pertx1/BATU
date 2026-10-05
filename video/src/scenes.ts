@@ -212,17 +212,32 @@ export const defaultFx: Fx = {
   chromaticAberration: true,
 };
 
-const clipProps = (cards: Card[], startSeconds: number): ReelProps => ({
+// Cada clip usa su propio audio (public/audio/), cortado del podcast desde
+// `startSeconds` y con la duración del clip.
+const clipProps = (
+  cards: Card[],
+  audioSrc: string,
+  startSeconds: number,
+): ReelProps => ({
   cards,
   fx: defaultFx,
-  audio: { src: "podcast-audio.m4a", startSeconds, volume: 1 },
+  audio: { src: audioSrc, startSeconds, volume: 1 },
   showCaptions: true,
   captions,
 });
 
 /** Clips cortos: cada uno es una composición en el Studio. */
 export const clips: { id: string; props: ReelProps }[] = [
-  { id: "Clip1-NoSeAdapta", props: clipProps(clip1, 96.8) },
-  { id: "Clip2-PagarConTarjeta", props: clipProps(clip2, 113.0) },
-  { id: "Clip3-ElApestoso", props: clipProps(clip3, 130.2) },
+  {
+    id: "Clip1-NoSeAdapta",
+    props: clipProps(clip1, "audio/clip1-no-se-adapta.m4a", 96.8),
+  },
+  {
+    id: "Clip2-PagarConTarjeta",
+    props: clipProps(clip2, "audio/clip2-pagar-con-tarjeta.m4a", 113.0),
+  },
+  {
+    id: "Clip3-ElApestoso",
+    props: clipProps(clip3, "audio/clip3-el-apestoso.m4a", 130.2),
+  },
 ];
