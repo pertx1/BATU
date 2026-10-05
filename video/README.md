@@ -1,54 +1,54 @@
-# Remotion video
+# Reels "minimal reel edit" (Remotion)
 
-<p align="center">
-  <a href="https://github.com/remotion-dev/logo">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://github.com/remotion-dev/logo/raw/main/animated-logo-banner-dark.apng">
-      <img alt="Animated Remotion Logo" src="https://github.com/remotion-dev/logo/raw/main/animated-logo-banner-light.gif">
-    </picture>
-  </a>
-</p>
+Reels verticales 1080×1920 a 30 fps. Cada tarjeta dura 4-5 s y el reel las
+encadena con un corte rápido (destello del color de acento + desenfoque).
 
-Welcome to your Remotion project!
+## Uso
 
-## Commands
-
-**Install Dependencies**
-
-```console
-npm i --loglevel=error
+```bash
+npm install
+npm run dev                                   # abre Remotion Studio
+npx remotion render Reel out/reel.mp4         # renderiza el reel (o: npm run render)
+npx remotion render TextCentered out/c.mp4    # una plantilla suelta
+npx remotion still CharacterBased out/b.png --frame=30
 ```
 
-**Start Preview**
+## Editar el contenido
 
-```console
-npm run dev
-```
+Todo está en **`src/scenes.ts`**: textos, color de acento (`ACCENTS.azul`,
+`verde`, `rojo`, `violeta` o cualquier hex), imágenes, duración, trama
+(`grid` / `dots` / `none`) y opacidad de la sombra. El orden del array
+`scenes` es el orden del reel. `defaultFx` controla el desfase de la cascada
+(3-5 frames), el motion blur de la entrada y la aberración cromática.
 
-**Render video**
+También se puede editar todo desde el panel de props del Studio (schemas zod en
+`src/schema.ts`).
 
-```console
-npx remotion render
-```
+## Assets (`public/`)
 
-**Upgrade Remotion**
+| Archivo | Uso | Estado |
+| --- | --- | --- |
+| `persona.png` | Plantilla B: persona recortada (PNG con alfa) | Incluido (fotograma del vídeo del podcast) |
+| `sombra-ventana.jpg` | Sombra de persiana y hojas en B/N | Incluido (generado) |
+| `objeto.png` | Plantilla A: objeto recortado (PNG con alfa o `.webm` con alfa) | **Falta** → placeholder SVG |
+| `objeto-pequeno.png` | Plantilla C: objeto pequeño que entra girando | **Falta** → placeholder SVG |
 
-```console
-npx remotion upgrade
-```
+Si un archivo no existe se dibuja un placeholder SVG y en la consola del render
+aparece `[reel] Faltan estos archivos en public/ ...`. Los objetos funcionan
+mejor con un PNG cuadrado (~1000 px) con fondo transparente; se muestran en
+blanco y negro con contraste alto. Para un objeto girando de verdad, usa un
+`.webm` con canal alfa (VP8/VP9) y ponlo en `objectSrc`.
 
-## Docs
+## Estructura
 
-Get started with Remotion by reading the [fundamentals page](https://www.remotion.dev/docs/the-fundamentals).
+- `src/components/`: `Background`, `WindowShadow`, `GridOverlay`,
+  `CameraIntro`, `PopIn`, `Typewriter`, `DrawPath`, `DashedRing`, `WipeBar`,
+  `DropShadowCopy`, `CardTransition`, `ChromaticAberration`, `Shapes`
+  (círculo, banda diagonal, cinta curva, sello dentado, líneas a lápiz),
+  `MediaObject`, `Placeholders` y `CardShell` (capas 1-3 + cámara).
+- `src/templates/`: `ObjectCentered` (A), `CharacterBased` (B), `TextCentered` (C).
+- `src/Reel.tsx`: encadena las tarjetas con `<TransitionSeries>`.
+- `src/theme.ts`: fuentes (Poppins, Cormorant Garamond, Anton), paleta y tiempos.
 
-## Help
-
-We provide help on our [Discord server](https://discord.gg/6VzzNDwUwV).
-
-## Issues
-
-Found an issue with Remotion? [File an issue here](https://github.com/remotion-dev/remotion/issues/new).
-
-## License
-
-Note that for some entities a company license is needed. [Read the terms here](https://github.com/remotion-dev/remotion/blob/main/LICENSE.md).
+Las animaciones usan solo `useCurrentFrame`, `interpolate` y `spring`: no hay
+animaciones CSS ni `Math.random`.

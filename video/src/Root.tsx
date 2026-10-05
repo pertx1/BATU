@@ -1,57 +1,80 @@
 import "./index.css";
-import { Composition, Folder } from "remotion";
-import { HelloWorld } from "./HelloWorld";
-import { Logo } from "./HelloWorld/Logo";
-import { Title } from "./HelloWorld/Title";
+import { Composition, Folder, type CalculateMetadataFunction } from "remotion";
+import { calculateReelMetadata, Reel, warnMissing } from "./Reel";
+import { characterCard, defaultFx, objectCard, scenes, textCard } from "./scenes";
+import {
+  characterCompSchema,
+  objectCompSchema,
+  reelSchema,
+  textCompSchema,
+  type Card,
+  type CharacterCard,
+  type Fx,
+  type ObjectCard,
+  type TextCard,
+} from "./schema";
+import { CharacterBased } from "./templates/CharacterBased";
+import { ObjectCentered } from "./templates/ObjectCentered";
+import { TextCentered } from "./templates/TextCentered";
+import { FPS, HEIGHT, WIDTH } from "./theme";
 
-// Each <Composition> is an entry in the sidebar!
+// Las composiciones de plantilla duran lo que diga su tarjeta.
+const cardMetadata =
+  <C extends Card>(): CalculateMetadataFunction<{ card: C; fx: Fx }> =>
+  ({ props }) => {
+    warnMissing([props.card]);
+    return { durationInFrames: props.card.durationInFrames };
+  };
 
 export const RemotionRoot: React.FC = () => {
   return (
     <>
-      <Folder name="Elements">
+      <Composition
+        id="Reel"
+        component={Reel}
+        schema={reelSchema}
+        defaultProps={{ cards: scenes, fx: defaultFx }}
+        calculateMetadata={calculateReelMetadata}
+        durationInFrames={390}
+        fps={FPS}
+        width={WIDTH}
+        height={HEIGHT}
+      />
+      <Folder name="Plantillas">
         <Composition
-          id="Logo"
-          component={Logo}
-          durationInFrames={150}
-          fps={30}
-          width={1920}
-          height={1080}
-          defaultProps={{
-            logoColor1: "#91EAE4",
-            logoColor2: "#86A8E7",
-          }}
+          id="ObjectCentered"
+          component={ObjectCentered}
+          schema={objectCompSchema}
+          defaultProps={{ card: objectCard, fx: defaultFx }}
+          calculateMetadata={cardMetadata<ObjectCard>()}
+          durationInFrames={135}
+          fps={FPS}
+          width={WIDTH}
+          height={HEIGHT}
         />
         <Composition
-          id="Title"
-          component={Title}
-          durationInFrames={115}
-          fps={30}
-          width={1920}
-          height={1080}
-          defaultProps={{
-            titleText: "Welcome to Remotion",
-            titleColor: "#000000",
-          }}
+          id="CharacterBased"
+          component={CharacterBased}
+          schema={characterCompSchema}
+          defaultProps={{ card: characterCard, fx: defaultFx }}
+          calculateMetadata={cardMetadata<CharacterCard>()}
+          durationInFrames={135}
+          fps={FPS}
+          width={WIDTH}
+          height={HEIGHT}
+        />
+        <Composition
+          id="TextCentered"
+          component={TextCentered}
+          schema={textCompSchema}
+          defaultProps={{ card: textCard, fx: defaultFx }}
+          calculateMetadata={cardMetadata<TextCard>()}
+          durationInFrames={135}
+          fps={FPS}
+          width={WIDTH}
+          height={HEIGHT}
         />
       </Folder>
-      <Composition
-        // You can take the "id" to render a video:
-        // bunx remotion render HelloWorld
-        id="HelloWorld"
-        component={HelloWorld}
-        durationInFrames={150}
-        fps={30}
-        width={1920}
-        height={1080}
-        // You can override these props for each render:
-        // https://www.remotion.dev/docs/parametrized-rendering
-        defaultProps={{
-          titleText: "Welcome to Remotion",
-          titleColor: "#000000",
-        }}
-      />
-
     </>
   );
 };
